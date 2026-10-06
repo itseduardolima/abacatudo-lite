@@ -23,8 +23,7 @@ export function TopNav() {
       <Logo height={28} />
       <div className="flex flex-1 items-center justify-center gap-1 rounded-pill bg-surface p-1">
         {LINKS.map(({ href, label }) => {
-          const isActive =
-            href === '/' ? pathname === '/' || pathname.startsWith('/movements') : pathname.startsWith(href)
+          const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
           return (
             <Link
               key={href}

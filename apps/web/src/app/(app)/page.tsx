@@ -5,14 +5,12 @@ import { ConnectBankCard } from './connect-bank-card'
 import { HeroCarousel } from './hero-carousel'
 import { PaceHeroCard } from './pace-hero-card'
 import { useHomePage } from './use-home-page'
-import { CardStatementSwitch } from '@/components/layout/CardStatementSwitch'
 import { Logo } from '@/components/ui/Logo'
 import { MonthStepper } from '@/components/ui/MonthStepper'
 import { formatMonthName } from '@/lib/utils/format-month'
 
 // Home fiel ao protótipo: sem cartão conectado mostra o convite pra conectar (03-inicio-vazio); com
 // cartão, o hero de ritmo (HU 7.4, `/budget/pace`) + faturas do mês (`/invoice` por cartão) do 07-inicio.
-// Segmentado "Cartão | Extrato" no topo: o Extrato (movimentações, 5.2) fica em `/movements`.
 export default function HomePage() {
   const {
     isLoadingMe,
@@ -31,7 +29,6 @@ export default function HomePage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-[420px] flex-col gap-6 px-4 pb-28 md:pb-10 pt-8">
       <div className="flex items-center justify-between">
-        <CardStatementSwitch active="card" />
         <Logo height={32} />
       </div>
 

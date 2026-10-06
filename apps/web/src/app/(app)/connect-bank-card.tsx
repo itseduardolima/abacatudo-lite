@@ -42,24 +42,6 @@ const POINTS = [
       </svg>
     ),
   },
-  {
-    title: 'Pix e débito ficam no Extrato',
-    body: 'Aparecem lá para consulta, mas não entram no orçamento.',
-    icon: (
-      <svg
-        viewBox="0 0 24 24"
-        width="24"
-        height="24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M4 6h16M4 12h16M4 18h10" />
-      </svg>
-    ),
-  },
 ]
 
 // Home sem cartão conectado (protótipo 03-inicio-vazio). "Importar fatura em CSV ou OFX" ficou de fora
@@ -78,8 +60,7 @@ export function ConnectBankCard({
       <div className="rounded-card-lg bg-inverse px-6 py-7 text-on-inverse">
         <h1 className="text-[2.1rem] font-bold leading-tight text-on-inverse-accent">Traga a fatura do seu cartão.</h1>
         <p className="mt-3.5 text-on-inverse">
-          Com ela, o app separa o que é seu do que é da família e calcula o orçamento. Débito e Pix ficam à parte, no
-          Extrato.
+          Com ela, o app separa o que é seu do que é da família e calcula o orçamento.
         </p>
         <div className="mt-6 flex flex-col items-start gap-4">
           {error && <InlineAlert>{error}</InlineAlert>}

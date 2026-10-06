@@ -27,8 +27,7 @@ export function BottomNav() {
       style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       {LINKS.map(({ href, label, icon: Icon }) => {
-        const isActive =
-          href === '/' ? pathname === '/' || pathname.startsWith('/movements') : pathname.startsWith(href)
+        const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
         return (
           <Link
             key={href}

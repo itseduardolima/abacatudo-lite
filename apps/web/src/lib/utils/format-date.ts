@@ -16,11 +16,6 @@ const TIME_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
   minute: '2-digit',
 })
 
-// "08:14" — hora do dia em America/Manaus (extrato, protótipo 19-extrato).
-export function formatTime(isoDateTime: string): string {
-  return TIME_FORMATTER.format(new Date(isoDateTime))
-}
-
 // "Atualizado" de um sync (8.6) — nunca inventa validade/vencimento que a API não manda (03-regras-negocio),
 // só diz há quanto tempo o dado é fresco. "hoje" compara pelo dia do produto, não pelas últimas 24h.
 export function formatSyncedAt(isoDateTime: string): string {
