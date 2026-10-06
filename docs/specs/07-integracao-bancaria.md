@@ -38,7 +38,7 @@ desenvolvedor, mais a página de preços e a documentação do Pluggy.
 | Meu Pluggy      | #200 `MeuPluggy`                              | via OAuth    | sim               | ONLINE |
 
 - **A hipótese anterior estava errada**: a InfinitePay **tem** conector. O Bee Vale não: entra só por
-  import OFX/CSV ou lançamento manual (e como é conta de movimentação e benefício é renda informada,
+  import OFX/CSV ou lançamento manual (e como é conta de movimentação,
   isso quase não custa nada).
 - **Todos autenticam por OAuth do Open Finance**, com CPF como único campo: o usuário é levado ao
   banco para consentir. Confirma o desenho: senha de banco **nunca** passa pela nossa API.

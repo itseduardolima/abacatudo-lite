@@ -287,8 +287,7 @@ rigor do § 1.
   "Copiar"; nenhum número é guardado, o texto nunca vai para log e o envio
   não é registrado.
 - **Pix é dado de terceiros**: traz nome do favorecido/pagador. Fica só na
-  área Movimentações (extrato e a lista de Pix por favorecido do benefício,
-  telas de consulta do próprio User) — não entra em relatório do cartão,
+  área Movimentações (extrato, tela de consulta do próprio User) — não entra em relatório do cartão,
   insight, log, prompt da IA nem export por padrão do assistente. Quem não quer nem armazenar isso pode
   desligar a sincronização de conta corrente e ficar só com cartão.
 - **Minimização com fornecedores**: Pluggy recebe o necessário para a conexão

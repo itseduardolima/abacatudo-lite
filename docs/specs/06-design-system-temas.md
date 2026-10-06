@@ -57,7 +57,7 @@ dentro das telas de gestão, nem o contrário.
    interno, total do banco, "− Não é meu" e "− A classificar"; lista das compras com o dono de cada uma. (Pessoa é só um
    filtro/rótulo, sem saldo; o botão "Enviar contas" gera a mensagem manual de
    cobrança por pessoa.)
-5. **Orçamento**: renda e benefício (informados), fixos, meta de poupança,
+5. **Orçamento**: renda (informada), fixos, meta de poupança,
    envelopes, ritmo.
 6. **Relatórios**: por categoria, estabelecimento, comparação mensal,
    assinaturas, parcelas futuras, "onde economizar" — só cartão.
@@ -65,12 +65,9 @@ dentro das telas de gestão, nem o contrário.
 
 **Movimentações (só consulta)**
 
-8. **Movimentações** (fundo Fog, ativo em Forest, sem lima): extrato de débito, Pix, benefício e contas, filtros (conta, entrada/saída,
+8. **Movimentações** (fundo Fog, ativo em Forest, sem lima): extrato de débito, Pix e contas, filtros (conta, entrada/saída,
    mês), busca por contraparte, totais de entrada e saída do mês marcados
    como "não entram no orçamento", rótulo "transferência entre suas contas".
-   A conta de benefício tem tela própria (`/movements/benefit`) com o controle
-   "Extrato | Resumo", saldo no topo e a lista de Pix por favorecido; entra pelo
-   card do benefício da Início e pelo filtro de contas, sem novo item na barra.
    Sem categoria, sem pessoa, sem gráfico de economia.
 
 **Comum**

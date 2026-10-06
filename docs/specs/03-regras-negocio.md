@@ -25,13 +25,11 @@ nunca se misturam com a gestão.
   transação de uma conta de cartão de crédito é gerenciada, e toda transação
   de qualquer outra conta é movimentação. Não existe "na dúvida", nem campo
   de canal por lançamento.
-- **Benefício (VR/VA) é tratado como renda**: o User informa o valor mensal
-  no orçamento (ver "Orçamento mensal"). Os saldos e Pix da Bee Vale e da
-  InfinitePay são contas comuns de movimentação; mover o dinheiro entre elas
-  e para outros bancos (Bee Vale → InfinitePay → Nubank) não afeta nada de
-  gestão.
-- **Consequência assumida**: gasto no débito, no Pix ou no saldo do benefício
-  **não entra** no orçamento nem nos relatórios. Por isso renda, benefício e
+- **Benefício (VR/VA) não existe como conceito**: saldos e Pix de qualquer
+  conta que não seja cartão de crédito são movimentações comuns, ignoradas
+  pela gestão.
+- **Consequência assumida**: gasto no débito, no Pix ou no saldo de benefício
+  **não entra** no orçamento nem nos relatórios. Por isso renda e
   gastos fixos são **informados por você** (ver "Orçamento mensal"), em vez de
   detectados nas movimentações.
 - A API rejeita (`422 NOT_A_CARD_TRANSACTION`) categoria, pessoa, split ou
@@ -212,8 +210,7 @@ endpoints próprios (`/movements`), módulo próprio (`movement`).
   opcional por lançamento.
 - **O que NÃO existe aqui**: categoria, pessoa, divisão, regra, envelope,
   alerta, relatório de economia e IA. Nada de Movimentações alimenta o
-  orçamento ou os relatórios do cartão. **Exceção única**: o extrato e o
-  resumo descritivo da conta de benefício (§ abaixo).
+  orçamento ou os relatórios do cartão.
 - **Rótulos informativos (P2)**: lançamento que casa com outro em **conta
   própria** (mesmo valor, sentidos opostos, <= 2 dias) recebe o rótulo
   "transferência entre suas contas" (`kind = TRANSFER`) para não parecer
@@ -226,67 +223,10 @@ endpoints próprios (`/movements`), módulo próprio (`movement`).
   (conta corrente) e a linha `CARD_PAYMENT` do lado do cartão é excluída do
   gasto.
 - **Dado de terceiros**: Pix traz nome do favorecido/pagador. Fica só nesta
-  área (extrato e a lista de Pix por favorecido do benefício, consultas do
-  próprio User) — não vai para relatório do cartão, insight, export nem IA
+  área (extrato, consulta do próprio User) — não vai para relatório do cartão, insight, export nem IA
   (ver 08 § 13 e 10-ia).
 - **Benefício (VR/VA)**: a recarga aparece aqui como entrada, só
-  informativa. O valor mensal do benefício que vale para o orçamento é o que
-  o User **informa** (ver "Orçamento mensal").
-
-### Extrato e relatório da conta de benefício
-
-Tela própria (`/movements/benefit`, dentro da área Extrato) para a conta
-marcada como **benefício** (`isBenefitAccount`, `CHECKING`). É **consulta
-descritiva**: calculada em código, testada, sem LLM, e **nunca** alimenta o
-orçamento, o ritmo do cartão, os relatórios do cartão nem a IA. Os endpoints
-recebem `accountId` (para outra conta corrente entrar depois sem refazer a
-API), mas a UI só expõe o benefício por enquanto.
-
-- **Período do benefício**: o dinheiro do mês entra no dia 30 do mês anterior, então o "mês" da conta de
-  benefício vai do **dia 30 do mês anterior** (inclusive) ao **dia 30 do mês** (exclusive), em `America/Manaus`
-  (dia 30 em mês curto cai no último dia). Vale para extrato, resumo, saídas por dia, Pix e hábitos; o ritmo
-  do benefício divide o saldo pelos dias até o próximo dia 30.
-- **Extrato**: a mesma lista de Movimentações filtrada pela conta, com o
-  **saldo atual** e "atualizado em" (do sync) no topo; mês selecionável.
-- **Resumo do mês** (aba "Resumo"): entradas, saídas e resultado; **ritmo do
-  benefício** = saldo atual ÷ dias restantes do mês (só no mês atual; não é o
-  ritmo do orçamento e não o altera); **saídas por dia** (barras) com o
-  acumulado do mês. Entradas e saídas são as registradas pelo banco: repasse
-  entre contas próprias só deixa de contar quando existir o rótulo
-  `TRANSFER` (§ Rótulos informativos).
-- **Pix por favorecido**: só Pix **enviados** (saídas cuja descrição começa
-  com "Pix ", convenção dos bancos; limitação declarada, trocar por
-  `operationType` real se o sync passar a guardá-lo). Agrupa pelo nome do
-  favorecido normalizado (sem acento, caixa baixa, espaços colapsados) e
-  mostra, por favorecido, o **total**, a **quantidade** e a **data do último**,
-  do maior total para o menor, com busca por nome. Tocar num favorecido abre
-  os Pix dele no mês. **Não classifica** favorecido como pessoa ou
-  estabelecimento (sem heurística por nome ou CNPJ); marcar isso à mão é
-  evolução futura.
-- **Para onde vai** (aba "Resumo", mês escolhido): as saídas agrupadas pelo
-  nome do estabelecimento (sem a cidade), do maior total para o menor, com
-  total, quantidade e data da última; os 10 maiores aparecem e o resto entra em
-  "outros". Fecham a conta três blocos à parte: **Pix enviados** (total, detalhe
-  na lista de Pix), **pagamento de fatura** e "outros". Invariante testada:
-  estabelecimentos + outros + Pix + pagamento de fatura = saídas do mês. Sem
-  categoria (categorias do benefício, se vierem, usam a mesma lista do cartão e
-  exigem exceção própria neste spec).
-- **Gastos que se repetem** (só estabelecimentos; **Pix fica de fora**, repetição
-  de Pix é ruído e dado de terceiros):
-  - **Recorrentes**: o mesmo detector de assinaturas do cartão (valor ±10%,
-    ~30 dias, >= 3 ocorrências, ativa se a última cobrança tem até 40 dias), olhando
-    os últimos 4 meses, independente do mês escolhido. Mostra valor mensal, dia
-    da cobrança e quantas vezes.
-  - **Mais frequentes**: no mês escolhido, estabelecimentos com 2 ou mais
-    compras, ordenados por quantidade e depois por total, com a data da última.
-    Pega o que não é mensal (corrida, lanche), que o detector não pega.
-  - Sem categoria: só agrupa pelo nome do estabelecimento (sem a cidade).
-- **Privacidade**: o nome do favorecido aparece só aqui e no extrato, para o
-  próprio User; nunca em relatório do cartão, insight, export, prompt ou log
-  (08 § 13).
-- **Dinheiro e agrupamento vêm do backend**; o front só exibe.
-- Invariante testada: total por favorecido somado = total dos Pix enviados do
-  mês; entradas − saídas = resultado.
+  informativa, e não afeta o orçamento.
 
 ## Só a minha parte (gasto de terceiros no meu cartão)
 
@@ -379,15 +319,13 @@ e não registra se foi enviado, pago ou recebido.
 Definido pelo User em `BudgetSettings` (mensal):
 
 ```
-teto variável = renda mensal (fixa + benefícios)
+teto variável = renda mensal
               − gastos fixos previstos
               − meta de poupança
 ```
 
-- **Renda e benefício são informados pelo User** (salário mensal e valor
-  mensal de VR/VA), não detectados: como Pix e contas estão fora da gestão,
-  o sistema não tem como saber o que é renda. VR/VA soma na renda porque o
-  User move o valor livremente entre contas.
+- **A renda é informada pelo User** (salário mensal), não detectada: como
+  Pix e contas estão fora da gestão, o sistema não tem como saber o que é renda.
 - **Gastos fixos previstos** (aluguel, contas pagas por Pix/boleto) também são
   informados: o sistema não os enxerga como compra no cartão.
 - **Sem envelopes nem alertas de limite** (descartados em 2026-09-25): o orçamento é só o teto e o ritmo.

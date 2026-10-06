@@ -137,7 +137,7 @@ Vocabulário fixo de domínio:
 | A classificar               | `inbox` (transação com `personId = null`)                                                      |
 | Meu / não é meu             | `mine` / `notMine` (`Statement`: `totalCents`, `notMineCents`, `unassignedCents`, `mineCents`) |
 | Orçamento / envelope        | `Budget` / `Envelope`                                                                          |
-| Renda                       | `income` (`FIXED` \| `BENEFIT` \| `OTHER`)                                                     |
+| Renda                       | `income`                                                                                       |
 | Conexão bancária (Pluggy)   | `PluggyItem`                                                                                   |
 | Consentimento               | `consent` (`consentExpiresAt`)                                                                 |
 | Assinatura / recorrência    | `recurring`                                                                                    |
@@ -188,7 +188,7 @@ Backend (`apps/api`), Jest:
 
 - `*.service.spec.ts` com `Repository` mockado: **toda regra de
   [03-regras-negocio](./03-regras-negocio.md) precisa de teste unitário** —
-  escopo por tipo de conta (só `CREDIT_CARD` é gerenciada; débito/Pix/benefício
+  escopo por tipo de conta (só `CREDIT_CARD` é gerenciada; débito/Pix
   nunca entram em categoria, orçamento nem IA),
   rejeição de categoria/pessoa/split fora do cartão, rateio que fecha em
   centavos, invariante da fatura (`Fatura = Meu + Não é meu + A classificar`), envelope/alerta uma vez por

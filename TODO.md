@@ -1045,22 +1045,7 @@ TABLE ... OWNER TO gastos`), e o `migrate dev` acusa "drift" nesse caso — usar
       seguinte o teto é projetado do mês configurado mais recente (só em memória, nada gravado). Falta conferir
       ao vivo
 
-- [x] 5.6–5.8 — Extrato e resumo da conta de benefício, com Pix por favorecido. Etapas:
-  - [x] spec: 00, 03 § Extrato e relatório da conta de benefício, 06, 08 e CLAUDE.md (exceção controlada à regra
-        "Movimentações sem relatório" e ao § 13 de privacidade do Pix)
-  - [x] API: `GET /movements/report?accountId=&month=` (resumo, ritmo, saídas por dia), `GET /movements/pix-recipients`
-        (por favorecido) e `GET /movements/pix?recipient=` (detalhe), funções puras em `movement-report.mapper`,
-        testes com 2 usuários. Só Pix enviados, detectados pela descrição "Pix …"
-  - [x] Web: `/movements/benefit` com "Extrato | Resumo", saldo e ritmo no topo, seletor de mês, entrada pelo card
-        do benefício da Início e por um link no Extrato
-  - [x] Web: aba Resumo (barras de saídas por dia, resultado) e Pix por favorecido com busca e detalhe. Falta
-        conferir ao vivo no celular com os dados reais (74 Pix / 26 favorecidos no banco de dev)
-  - [x] 5.10 — Gastos que se repetem no benefício: `GET /movements/habits` (recorrentes com o detector do cartão sobre
-        os últimos 4 meses + estabelecimentos mais frequentes do mês, sem Pix) e seções na aba Resumo. Falta
-        conferir ao vivo; categorias ficam para depois
-  - [x] 5.11 — Para onde vai, por estabelecimento (`GET /movements/spending`, top 10 + outros, Pix e fatura à parte;
-        seção na aba Resumo). Falta conferir ao vivo. Categorias (mesma lista do cartão) seguem para depois
-  - [ ] Depois (P2): marcar favorecido como pessoa/estabelecimento; tipo de Pix real (`operationType`)
+- [x] 5.6–5.11 — removidos junto com a conta de benefício (2026-10-06).
 
 - [x] Parcelas estimadas na fatura prevista (BB e Pic Pay não mandam as futuras). Etapas:
   - [x] spec 03 § Fatura prevista (estimada = mesmo valor e vencimento mês a mês, nunca gravada, some quando o banco lança)
@@ -1305,3 +1290,7 @@ typecheck/lint/build limpos).
 
 - [x] Quinzena removida: orçamento só mensal, renda em um único salário, gasto fixo sem quinzena de pagamento,
       card da Início sem marcador do dia 15 (2026-10-06).
+
+- [x] Conta de benefício removida: `Account.isBenefitAccount`, `BudgetMonth.benefitCents`, `setBenefitAccount`,
+      `/movements/{report,spending,habits,pix,pix-recipients}`, telas `/movements/benefit`, card da Início e campo de
+      renda de benefícios; teto = renda − fixos − poupança; lançamento de benefício é movimentação comum (2026-10-06).

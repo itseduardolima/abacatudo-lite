@@ -61,13 +61,13 @@ motivo registrado.
 
 ## Riscos conhecidos (acompanhar por sprint)
 
-| Risco                                                      | Mitigação                                                                                                       |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Pluggy sem conector para InfinitePay/Bee Vale              | Sem impacto na gestão: são só movimentações (benefício é renda informada); import cobre se quiser ver o extrato |
-| Plano gratuito do Pluggy não cobrir o 2º usuário           | Spike 0.6; 2º usuário pode usar só import                                                                       |
-| Categorização ruim gera desconfiança                       | Correção em 1 toque + regras que aprendem; IA só sugere                                                         |
-| Débito/Pix/benefício tratados como cartão (ou o contrário) | Escopo decidido só pelo tipo da conta, sem heurística; teste dedicado na HU 5.1                                 |
-| "Meu" errado por split mal fechado                         | Invariante Fatura = Meu + Não é meu testada; soma dos splits obrigatória                                        |
-| Vazamento entre usuários por query esquecida               | RLS + teste com 2 Users em todo módulo                                                                          |
-| Vazamento de segredo (Pluggy, IA, chave de criptografia)   | `.env` fora do git, `deploy-check`, rotação documentada, redaction de log                                       |
-| Perda do banco                                             | Backup criptografado fora da VPS + drill mensal                                                                 |
+| Risco                                                    | Mitigação                                                                         |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Pluggy sem conector para InfinitePay/Bee Vale            | Sem impacto na gestão: são só movimentações; import cobre se quiser ver o extrato |
+| Plano gratuito do Pluggy não cobrir o 2º usuário         | Spike 0.6; 2º usuário pode usar só import                                         |
+| Categorização ruim gera desconfiança                     | Correção em 1 toque + regras que aprendem; IA só sugere                           |
+| Débito/Pix tratados como cartão (ou o contrário)         | Escopo decidido só pelo tipo da conta, sem heurística; teste dedicado na HU 5.1   |
+| "Meu" errado por split mal fechado                       | Invariante Fatura = Meu + Não é meu testada; soma dos splits obrigatória          |
+| Vazamento entre usuários por query esquecida             | RLS + teste com 2 Users em todo módulo                                            |
+| Vazamento de segredo (Pluggy, IA, chave de criptografia) | `.env` fora do git, `deploy-check`, rotação documentada, redaction de log         |
+| Perda do banco                                           | Backup criptografado fora da VPS + drill mensal                                   |
