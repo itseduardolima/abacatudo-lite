@@ -1,0 +1,13 @@
+node_modules
+dist
+.next
+.turbo
+coverage
+pnpm-lock.yaml
+apps/api/prisma/migrations
+apps/web/cypress/screenshots
+apps/web/cypress/videos
+apps/web/next-env.d.ts
+# Prettier não tem parser para dotenv — sem isso `format:check` falha nesses arquivos
+.env
+.env.*

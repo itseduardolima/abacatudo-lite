@@ -1,0 +1,32 @@
+{
+  "name": "gastos-web",
+  "private": true,
+  "packageManager": "pnpm@11.5.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "simple-git-hooks"
+  },
+  "devDependencies": {
+    "eslint-config-prettier": "^10.1.8",
+    "lint-staged": "^17.5.1",
+    "prettier": "^3.6.2",
+    "simple-git-hooks": "^2.14.0",
+    "turbo": "^2.5.6",
+    "typescript": "^5.9.2"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm exec lint-staged"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,cjs,json,md,yml,yaml,css}": "prettier --write"
+  }
+}

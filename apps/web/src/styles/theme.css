@@ -1,0 +1,61 @@
+/* Tokens do design system (apps/web/docs/DESIGN_SYSTEM.md). Dois níveis: primitivo -> semântico.
+   Componente NUNCA usa um primitivo direto; sempre o semântico (--color-primary, não --color-lime-voltage). */
+:root {
+  /* primitivos (estilo de referência Wise) */
+  --color-forest-ink: #163300;
+  --color-lime-voltage: #9fe870;
+  --color-spruce: #054d28;
+  --color-linen-mist: #e2f6d5;
+  --color-signal-blue: #0b4c72;
+  --color-alarm-red: #cb272f;
+  --color-charcoal: #454745;
+  --color-obsidian: #0e0f0c;
+  --color-slate: #6a6c6a;
+  --color-pebble: #868685;
+  --color-fog: #e8ebe6;
+  --color-paper: #ffffff;
+
+  /* semânticos */
+  --color-primary: var(--color-lime-voltage);
+  --color-primary-ink: var(--color-forest-ink);
+  --color-ink: var(--color-obsidian);
+  --color-text: var(--color-charcoal);
+  --color-text-muted: var(--color-slate);
+  --color-canvas: var(--color-paper);
+  --color-surface: var(--color-fog);
+  --color-surface-tint: var(--color-linen-mist);
+  --color-inverse: var(--color-forest-ink);
+  --color-inverse-2: var(--color-spruce);
+  --color-on-inverse: var(--color-paper);
+  --color-on-inverse-accent: var(--color-lime-voltage);
+  /* Overlays sobre fundo escuro (hero do ritmo, DESIGN_SYSTEM § Cartão de ritmo): tokens próprios em vez
+     de modificador de opacidade do Tailwind, que não resolve com cor em CSS custom property (vira
+     transparente — bug visto ao vivo). */
+  --color-on-inverse-muted: rgba(255, 255, 255, 0.72);
+  --color-on-inverse-hairline: rgba(255, 255, 255, 0.16);
+  --color-on-inverse-marker: #f5b84b;
+  --color-accent-tint-on-inverse: rgba(159, 232, 112, 0.16);
+  --color-border: var(--color-pebble);
+  --color-border-strong: var(--color-forest-ink);
+  --color-accent: var(--color-signal-blue);
+  --color-danger: var(--color-alarm-red);
+  /* Véu atrás de bottom sheet (protótipo .dim) — token dedicado, não opacidade do Tailwind sobre
+     --color-obsidian (não resolve com CSS custom property, ver nota de Tailwind opacity acima). */
+  --color-scrim: rgba(14, 15, 12, 0.52);
+
+  --radius-pill: 9999px;
+  --radius-card: 10px;
+  --radius-card-lg: 28px;
+  --radius-full: 1000px;
+
+  --shadow-hair: rgba(14, 15, 12, 0.12) 0 0 0 1px;
+  --shadow-lg: rgba(0, 0, 0, 0.08) 0 6px 20px 0;
+  --shadow-xl: rgba(0, 0, 0, 0.15) 0 10px 32px 0, rgba(0, 0, 0, 0.04) 0 40px 40px 0;
+
+  /* Inter auto-hospedada (@fontsource-variable/inter): sem CDN em runtime, CSP font-src 'self'.
+     O display é Inter 900 com -0.04em (a Wise Sans é proprietária). */
+  --font-body: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: var(--font-body);
+
+  --control-height: 44px;
+}

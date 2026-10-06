@@ -1,0 +1,416 @@
+// Os models de domínio entram por sprint, cada um com RLS e teste de isolamento (08-seguranca § 1).
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  // Só usada por `prisma migrate dev` em desenvolvimento local, para criar/derrubar o banco-sombra
+  // temporário que a Prisma usa para detectar drift. Precisa de um papel com CREATEDB — por isso aponta
+  // para o superusuário `postgres` do compose de dev, nunca para o papel `gastos` (sem CREATEDB, sem
+  // BYPASSRLS — 08-seguranca § 1). Não existe em produção: lá só roda `prisma migrate deploy`, que nunca
+  // cria banco-sombra.
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+/// Sem RLS (08-seguranca § 1, exceção documentada): resolvida pelo e-mail no login, antes de existir
+/// userId no contexto. Acesso só pelo AuthRepository — regra de lint em eslint.config.mjs.
+model User {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  passwordHash     String
+  // 2FA TOTP (1.6, 08-seguranca § 4): segredo cifrado (AES-256-GCM, DATA_ENCRYPTION_KEY), nunca em texto
+  // puro no banco. totpEnabledAt null = ligando ainda não confirmado ou nunca ligado; a distinção entre os
+  // dois é só "totpSecret preenchido e totpEnabledAt null" (setup pendente) — nunca uma tabela à parte.
+  totpSecret       String?
+  totpEnabledAt    DateTime?
+  // Último passo (janela de 30s) de código aceito — barra reusar o mesmo código dentro da janela de ±1
+  // (08-seguranca § 4: "proteção contra reuso do mesmo código").
+  totpLastUsedStep Int?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  sessions               Session[]
+  people                 Person[]
+  categories             Category[]
+  accounts               Account[]
+  transactions           Transaction[]
+  pluggyItems            PluggyItem[]
+  rules                  Rule[]
+  splits                 Split[]
+  budgetMonths           BudgetMonth[]
+  cardHolderHints        CardHolderHint[]
+  fixedExpenses          FixedExpense[]
+  passwordResetTokens    PasswordResetToken[]
+  aiUsages               AiUsage[]
+  twoFactorRecoveryCodes TwoFactorRecoveryCode[]
+  twoFactorChallenges    TwoFactorChallenge[]
+}
+
+/// Sem RLS: resolvida pelo hash do token do cookie, antes de existir userId no contexto (mesma exceção
+/// de User). tokenHash é o SHA-256 do token opaco — o valor em si nunca é persistido.
+model Session {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String    @unique
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+  revokedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Sem RLS: resolvida pelo hash do token do link, antes de existir userId no contexto (mesma exceção de
+/// User/Session). tokenHash é o SHA-256 de um token opaco de 32 bytes — o valor em si nunca é persistido
+/// nem loga (08-seguranca § 4). usedAt null = ainda válido; emitir um link novo invalida qualquer token
+/// anterior não usado do mesmo User (ver AuthRepository.createResetToken).
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Sem RLS (mesma exceção de User/Session/PasswordResetToken, 08-seguranca § 1 e § 4). Código de
+/// recuperação de uso único: hash argon2 (não SHA-256 — mesmo tratamento de senha, é um segredo curto e
+/// pode ser tentado por força bruta se vazar o dump). Confirmar o 2FA gera exatamente 10; usar um marca
+/// usedAt, nunca apaga (rastro de quantos já foram usados).
+model TwoFactorRecoveryCode {
+  id        String    @id @default(uuid())
+  userId    String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Sem RLS (mesma exceção). Ponte entre "senha confirmada" e "sessão criada" quando o User tem 2FA ligado:
+/// o login normal cria isto em vez de uma Session; só vira Session depois do código TOTP (ou de recuperação)
+/// bater. Mesmo formato de token opaco do reset de senha (32 bytes, só o SHA-256 persistido), validade curta
+/// (5 min) — é um passo intermediário, não uma sessão de verdade.
+model TwoFactorChallenge {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// RLS por userId (08-seguranca § 1). Todo User tem uma Person isSelf, criada pelo seed.
+model Person {
+  id         String    @id @default(uuid())
+  userId     String
+  name       String
+  isSelf     Boolean   @default(false)
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions    Transaction[]
+  rules           Rule[]
+  splits          Split[]
+  cardHolderHints CardHolderHint[]
+
+  @@index([userId])
+}
+
+/// RLS por userId. Nome único por User (03-regras-negocio § Categorias e regras).
+model Category {
+  id         String    @id @default(uuid())
+  userId     String
+  name       String
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions          Transaction[]
+  transactionsSuggested Transaction[] @relation("TransactionCategorySuggested")
+  rules                 Rule[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+enum AccountType {
+  CREDIT_CARD
+  CHECKING
+  CASH
+}
+
+enum AccountSource {
+  MANUAL
+  IMPORT
+  PLUGGY
+}
+
+/// RLS por userId. O `type` decide o escopo (03-regras-negocio § Escopo): só CREDIT_CARD é gerenciada
+/// (categoria, pessoa, orçamento); CHECKING/CASH são movimentação, só consulta (04-padroes-codigo:
+/// TransactionRepository só devolve CREDIT_CARD, MovementRepository só o resto — mesma tabela).
+model Account {
+  id                String        @id @default(uuid())
+  userId            String
+  name              String
+  type              AccountType
+  source            AccountSource @default(MANUAL)
+  // Só fazem sentido em CREDIT_CARD; a API rejeita se vierem para CHECKING/CASH (mass assignment é do
+  // schema Zod, ver packages/shared/src/schemas/account.ts).
+  closingDay        Int?
+  closedBillCents   Int?
+  dueDay            Int?
+  creditLimitCents  Int?
+  // Saldo sincronizado pelo Pluggy (Fase 4) — só populado em CHECKING via runSync; conta MANUAL/IMPORT
+  // nunca tem saldo de verdade, fica null.
+  balanceCents      Int?
+  // Marca manual do usuário (tela de contas), nunca por heurística de nome de banco — TODO.md/Fase 4: só
+  // uma conta por vez pode ser a "conta de benefício" (AccountService garante isso).
+  isBenefitAccount  Boolean       @default(false)
+  // Marca manual do usuário (DESIGN_SYSTEM § Logos de bancos): qual logo mostrar, entre os 3 servidos
+  // localmente em brand/bancos/ (validado pelo schema Zod, nunca string livre). Sem logo escolhido,
+  // conta usa monograma (avatar Fog com iniciais).
+  bankLogo          String?
+  pluggyItemId      String?
+  externalAccountId String?
+  archivedAt        DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pluggyItem      PluggyItem?      @relation(fields: [pluggyItemId], references: [id])
+  transactions    Transaction[]
+  cardHolderHints CardHolderHint[]
+
+  // NULL não colide com NULL no Postgres, então isso só trava duplicata de conta sincronizada pelo Pluggy
+  // (externalAccountId preenchido) — conta manual continua livre. Fecha a race do upsert em runSync.
+  @@unique([userId, externalAccountId])
+  @@index([userId])
+}
+
+enum PluggyItemStatus {
+  WAITING_USER_INPUT
+  UPDATED
+  LOGIN_ERROR
+  OUTDATED
+  ERROR
+  // Só chega por ação local (desconectar, 8.5) — nunca vem do Pluggy; item revogado lá continua com o
+  // último status que ele tinha antes de sumir, então marcamos aqui.
+  DISCONNECTED
+}
+
+/// RLS por userId. Nenhuma credencial de banco guardada: pluggyItemId é identificador, não segredo
+/// (08-seguranca § 14). Sem webhook (Meu Pluggy não tem, ver 07-integracao-bancaria) — o status muda por
+/// polling logo após conectar, e depois pelo sync diário/manual.
+model PluggyItem {
+  id               String           @id @default(uuid())
+  userId           String
+  pluggyItemId     String           @unique
+  institutionName  String
+  status           PluggyItemStatus @default(WAITING_USER_INPUT)
+  lastErrorCode    String?
+  consentExpiresAt DateTime?
+  lastSyncAt       DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts Account[]
+
+  @@index([userId])
+}
+
+enum TransactionKind {
+  EXPENSE
+  INCOME
+  TRANSFER
+  REFUND
+  CARD_PAYMENT
+}
+
+enum TransactionStatus {
+  POSTED
+  PENDING
+}
+
+/// RLS por userId. "Cartão" x "movimentação" nunca é um campo aqui — é Account.type que decide
+/// (03-regras-negocio § Escopo); esta é a mesma tabela que TransactionRepository e MovementRepository leem
+/// com filtros diferentes (04-padroes-codigo). categoryId/personId/note só fazem sentido quando a conta é
+/// CREDIT_CARD — a API rejeita fora disso. personId nasce sempre preenchido (padrão "Meu"); só fica null
+/// quando a transação está dividida — aí quem manda é a soma dos Split (03-regras-negocio § Atribuição de
+/// pessoa e § Só a minha parte).
+model Transaction {
+  id                           String            @id @default(uuid())
+  userId                       String
+  accountId                    String
+  externalId                   String?
+  kind                         TransactionKind
+  status                       TransactionStatus @default(POSTED)
+  amountCents                  Int
+  occurredAt                   DateTime
+  description                  String
+  merchant                     String?
+  categoryId                   String?
+  // Sugestão da IA (10.1): nunca sobrescreve categoryId já preenchido. Some quando o User confirma (vira
+  // categoryId) ou recusa. Confiança abaixo do limiar fica só como sugestão; acima, a própria categorização
+  // já aplica e mantém os dois preenchidos (auditoria/selo "sugerido pela IA").
+  categorySuggestedId          String?
+  categorySuggestionConfidence Int?
+  personId                     String?
+  note                         String?
+  cardLast4                    String?
+  installmentNumber            Int?
+  installmentTotal             Int?
+  installmentDueAt             DateTime?
+  // Nome na fatura (03-regras-negocio § Mensagem de conta): apelido da compra, igual em todas as parcelas.
+  // O sync nunca escreve aqui.
+  displayName                  String?
+  billId                       String?
+  createdAt                    DateTime          @default(now())
+  updatedAt                    DateTime          @updatedAt
+
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account           Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category          Category? @relation(fields: [categoryId], references: [id])
+  categorySuggested Category? @relation("TransactionCategorySuggested", fields: [categorySuggestedId], references: [id])
+  person            Person?   @relation(fields: [personId], references: [id])
+  splits            Split[]
+
+  @@unique([accountId, externalId])
+  @@index([userId])
+  @@index([accountId, occurredAt])
+}
+
+/// RLS por userId. "Sempre para este estabelecimento" (03-regras-negocio § Atribuição de pessoa e §
+/// Categorias e regras): uma regra por estabelecimento normalizado por User, decide a pessoa (antes do
+/// padrão self) e/ou a categoria (antes de "sem categoria") — pelo menos um dos dois preenchido, nunca os
+/// dois vazios (CHECK na migration).
+model Rule {
+  id         String   @id @default(uuid())
+  userId     String
+  merchant   String
+  personId   String?
+  categoryId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  person   Person?   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, merchant])
+  @@index([userId])
+}
+
+/// RLS por userId. "Cartão adicional/virtual" (2.3, 03-regras-negocio § Atribuição de pessoa): final do
+/// cartão (4 dígitos) → pessoa, por conta (o mesmo final pode existir em cartões de contas diferentes).
+/// Decide antes da Rule por estabelecimento e do padrão self — só depois de "já confirmada pelo User".
+model CardHolderHint {
+  id        String   @id @default(uuid())
+  userId    String
+  accountId String
+  cardLast4 String
+  personId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  person  Person  @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, cardLast4])
+  @@index([userId])
+}
+
+/// RLS por userId. Gasto fixo mensal informado pelo usuário (aluguel, internet...) — recorrente por
+/// natureza (conta todo mês até ser arquivado, sem `month` próprio; ver 03-regras-negocio § Orçamento
+/// mensal). Soma junto da fatura aberta no ritmo (HU 7.4).
+model FixedExpense {
+  id          String    @id @default(uuid())
+  userId      String
+  name        String
+  amountCents Int
+  half        Int       @default(1)
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// RLS por userId. Divisão de uma compra entre Persons (03-regras-negocio § Atribuição de pessoa): a soma
+/// dos splits de uma transação tem que fechar com o total, checado na API antes de gravar. Enquanto
+/// existem splits, Transaction.personId fica null — quem manda é essa tabela.
+model Split {
+  id            String   @id @default(uuid())
+  userId        String
+  transactionId String
+  personId      String
+  amountCents   Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  person      Person      @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([transactionId, personId])
+  @@index([userId])
+}
+
+/// RLS por userId. Configuração do orçamento por mês (03-regras-negocio § Orçamento mensal) — renda,
+/// benefício, gastos fixos e meta de poupança são sempre informados pelo User, nunca detectados (Pix está
+/// fora da gestão). teto variável = income + benefit − fixedExpenses − savingsGoal, calculado, não
+/// guardado. Mês fechado (no passado) é imutável — a API rejeita update.
+model BudgetMonth {
+  id                 String   @id @default(uuid())
+  userId             String
+  month              String
+  incomeCents        Int      @default(0)
+  firstHalfIncomeCents Int    @default(0)
+  benefitCents       Int      @default(0)
+  fixedExpensesCents Int      @default(0)
+  savingsGoalCents   Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+  @@index([userId])
+}
+
+/// RLS por userId. Tokens gastos com a IA por User/mês (10.4, 10-ia § Custo e limites): ao estourar
+/// AI_MONTHLY_TOKEN_BUDGET, a categorização por IA pausa até virar o mês (categorização por regras
+/// continua funcionando normalmente).
+model AiUsage {
+  id         String   @id @default(uuid())
+  userId     String
+  month      String
+  tokensUsed Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+  @@index([userId])
+}

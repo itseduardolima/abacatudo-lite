@@ -1,0 +1,33 @@
+# Um único domínio (APP_DOMAIN): o browser fala só com ele. /api/* vai para a
+# API (prefixo removido), o resto para o Next. Mesma origem = sem CORS e sem
+# cookie de domínio largo (ver docs/specs/01-arquitetura.md § Um domínio só).
+# Caddy emite e renova Let's Encrypt sozinho.
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# Webhook do Pluggy é a única rota /api pública sem cookie de sessão
+	# (autenticada por segredo, ver 07-integracao-bancaria § Webhooks).
+	handle_path /api/* {
+		request_body {
+			max_size 6MB
+		}
+		reverse_proxy api:3001
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

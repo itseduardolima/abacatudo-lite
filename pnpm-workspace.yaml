@@ -1,0 +1,25 @@
+packages:
+  - apps/*
+  - packages/*
+allowBuilds:
+  '@parcel/watcher': false
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@scarf/scarf': false
+  argon2: true
+  cypress: true
+  prisma: true
+  simple-git-hooks: false
+  unrs-resolver: false
+# Correções de segurança de dependências transitivas (pnpm audit --audit-level=high, 08-seguranca § 11).
+# Remover cada linha quando a dependência direta passar a trazer a versão corrigida.
+overrides:
+  multer: '>=2.3.0'
+  postcss: '>=8.5.23'
+  deepmerge-ts: '>=8.0.0'
+# Sem versão corrigida publicada no npm (braces 3.0.3 é a última; o aviso pede >=3.0.4). Só entra por ferramenta
+# de desenvolvimento do apps/web (tailwindcss, eslint-config-next), nunca roda em produção. Remover quando sair
+# uma versão corrigida (08-seguranca § 11).
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm

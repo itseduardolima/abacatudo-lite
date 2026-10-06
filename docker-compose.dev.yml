@@ -1,0 +1,9 @@
+# Overlay só para desenvolvimento local: publica a porta do Postgres no host
+# (a base docker-compose.yml, pensada pra VPS, nunca expõe essa porta — ver
+# docs/specs/08-seguranca.md § 11). Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres
+services:
+  postgres:
+    ports:
+      # 5433 no host: 5432 costuma estar ocupada por outro projeto (ex.: pdv-web) rodando na máquina.
+      - '127.0.0.1:5433:5432'

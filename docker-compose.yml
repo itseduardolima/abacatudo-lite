@@ -1,0 +1,95 @@
+# Defaults valem só para desenvolvimento local (senhas triviais). Em produção
+# o .env é obrigatório — o serviço `env-check` roda ./scripts/deploy-check.sh antes de qualquer serviço de
+# app subir (barra .env ausente ou com placeholder), então não depende do operador lembrar de rodar o
+# script à parte antes do `docker compose up` (achado de baixa severidade da auditoria de 2026-09-23). Só
+# gate os serviços de app — o `postgres` sozinho continua subindo direto pro fluxo de dev documentado
+# (`docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres`, sem .env nenhum).
+services:
+  env-check:
+    image: alpine:3.20
+    volumes:
+      - .:/app:ro
+    working_dir: /app
+    entrypoint: ['sh', './scripts/deploy-check.sh']
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:-internal@localhost}
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Mesma origem: o browser fala com /api/*, que o Caddy manda para a API.
+        NEXT_PUBLIC_API_URL: /api
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api:3001
+      # O Docker seta HOSTNAME sozinho pro id do container, e o server.js standalone do Next usa
+      # `process.env.HOSTNAME` como endereço de bind quando ela existe — sem isto, o Next escuta só no IP
+      # daquela rede específica (a que o hostname resolve primeiro), nunca em 0.0.0.0. Passa despercebido
+      # com um Caddy só (mesma rede do web), mas quebra (502) assim que o proxy reverso está numa rede
+      # diferente — como no Caddy compartilhado da VPS (scripts/connect-shared-network.sh), achado ao
+      # vivo no primeiro deploy.
+      HOSTNAME: '0.0.0.0'
+    depends_on:
+      - api
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    # opcional para os comandos de desenvolvimento; em produção o deploy-check.sh exige o .env
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      # Usuário da aplicação (não-superusuário, criado por infra/postgres/init-app-role.sh).
+      DATABASE_URL: postgresql://${APP_DB_USER:-gastos}:${APP_DB_PASSWORD:-gastos}@postgres:5432/${APP_DB_NAME:-gastos}?schema=public
+      WEB_ORIGIN: https://${APP_DOMAIN:-localhost}
+    depends_on:
+      env-check:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      # Superusuário só para administração/backup; a API usa APP_DB_USER.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: postgres
+      APP_DB_USER: ${APP_DB_USER:-gastos}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-gastos}
+      APP_DB_NAME: ${APP_DB_NAME:-gastos}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init-app-role.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres_data:

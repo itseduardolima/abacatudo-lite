@@ -1,0 +1,11 @@
+# Nunca copiar segredos ou artefatos locais para dentro das imagens.
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+**/cypress/screenshots
+**/cypress/videos
+.git

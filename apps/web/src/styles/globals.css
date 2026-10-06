@@ -1,0 +1,27 @@
+@import './theme.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-canvas text-text font-body antialiased;
+  font-feature-settings: 'calt';
+}
+
+/* Foco sempre visível (teclado): contorno forte, sem anel de brilho. */
+:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: 2px;
+}
+
+@layer utilities {
+  /* O número que importa da tela: Inter 900, tracking apertado (DESIGN_SYSTEM § Tipografia). */
+  .display-number {
+    font-family: var(--font-display);
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    line-height: 0.85;
+    font-variant-numeric: tabular-nums;
+  }
+}
