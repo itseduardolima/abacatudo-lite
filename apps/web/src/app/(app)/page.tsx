@@ -1,6 +1,5 @@
 'use client'
 
-import { BenefitBalanceCard } from './benefit-balance-card'
 import { CardInvoiceRow } from './card-invoice-row'
 import { ConnectBankCard } from './connect-bank-card'
 import { HeroCarousel } from './hero-carousel'
@@ -26,9 +25,6 @@ export default function HomePage() {
     onConnectBank,
     isConnectingBank,
     connectError,
-    benefitAccountName,
-    benefitBalanceCents,
-    benefitSyncedAt,
   } = useHomePage()
   const hasNoCard = !isLoadingAccounts && cardAccounts.length === 0
 
@@ -46,25 +42,7 @@ export default function HomePage() {
       )}
 
       {!isLoadingMe && !hasNoCard && !isLoadingPace && pace && (
-        <HeroCarousel
-          cards={[
-            { key: 'pace', content: <PaceHeroCard pace={pace} /> },
-            ...(benefitBalanceCents != null
-              ? [
-                  {
-                    key: 'benefit',
-                    content: (
-                      <BenefitBalanceCard
-                        accountName={benefitAccountName}
-                        cents={benefitBalanceCents}
-                        syncedAt={benefitSyncedAt}
-                      />
-                    ),
-                  },
-                ]
-              : []),
-          ]}
-        />
+        <HeroCarousel cards={[{ key: 'pace', content: <PaceHeroCard pace={pace} /> }]} />
       )}
 
       {!isLoadingAccounts && cardAccounts.length > 0 && (

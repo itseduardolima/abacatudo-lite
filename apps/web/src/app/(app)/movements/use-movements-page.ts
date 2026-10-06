@@ -32,7 +32,6 @@ export function useMovementsPage() {
   const statementAccounts = (accounts.data ?? []).filter(
     (account) => account.type !== 'CREDIT_CARD' && !account.archivedAt,
   )
-  const hasBenefitAccount = (accounts.data ?? []).some((account) => account.isBenefitAccount && !account.archivedAt)
   const accountNameById = new Map((accounts.data ?? []).map((account) => [account.id, account.name]))
 
   const groups = groupMovementsByDay(movements.data ?? [])
@@ -42,7 +41,6 @@ export function useMovementsPage() {
     goToPreviousMonth,
     goToNextMonth,
     statementAccounts,
-    hasBenefitAccount,
     accountNameById,
     accountId,
     setAccountId,

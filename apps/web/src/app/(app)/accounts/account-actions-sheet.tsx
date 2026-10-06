@@ -1,7 +1,7 @@
 'use client'
 
 import type { Account } from '@gastos/shared'
-import { CalendarDays, Pencil, Tag, Trash2, Wallet } from 'lucide-react'
+import { CalendarDays, Pencil, Tag, Trash2 } from 'lucide-react'
 import { useEffect } from 'react'
 
 export function AccountActionsSheet({
@@ -9,7 +9,6 @@ export function AccountActionsSheet({
   onRename,
   onPickLogo,
   onBilling,
-  onToggleBenefit,
   onRemove,
   onClose,
 }: {
@@ -17,7 +16,6 @@ export function AccountActionsSheet({
   onRename: () => void
   onPickLogo: () => void
   onBilling: () => void
-  onToggleBenefit: () => void
   onRemove: () => void
   onClose: () => void
 }) {
@@ -57,14 +55,6 @@ export function AccountActionsSheet({
           <button type="button" onClick={onBilling} className={itemClass}>
             <CalendarDays size={18} strokeWidth={1.8} className="text-ink" />
             <span className="font-medium text-ink">Fechamento e vencimento</span>
-          </button>
-        )}
-        {account.type === 'CHECKING' && (
-          <button type="button" onClick={onToggleBenefit} className={itemClass}>
-            <Wallet size={18} strokeWidth={1.8} className="text-ink" />
-            <span className="font-medium text-ink">
-              {account.isBenefitAccount ? 'Deixar de ser conta de benefício' : 'Marcar como conta de benefício'}
-            </span>
           </button>
         )}
         <button type="button" onClick={onRemove} className={itemClass}>

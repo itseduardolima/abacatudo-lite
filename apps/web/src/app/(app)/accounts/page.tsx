@@ -13,7 +13,6 @@ import { Input } from '@/components/ui/Input'
 import { BankAvatar } from '@/components/finance/BankAvatar'
 import { formatAccountType } from '@/lib/utils/format-account-type'
 import { formatSyncedAt } from '@/lib/utils/format-date'
-import { formatMoney } from '@/lib/utils/format-money'
 import { useAccountsPage } from './use-accounts-page'
 
 const TYPE_OPTIONS: AccountType[] = ['CREDIT_CARD', 'CHECKING', 'CASH']
@@ -32,7 +31,6 @@ export default function AccountsPage() {
     onSubmit,
     isSubmitting,
     ruleError,
-    toggleBenefitAccount,
     onConnectBank,
     isConnectingBank,
     connectError,
@@ -151,11 +149,6 @@ export default function AccountsPage() {
                       Atualizado {formatSyncedAt(account.lastSyncAt)}
                     </span>
                   ) : null}
-                  {account.isBenefitAccount && account.balanceCents != null && (
-                    <span className="text-sm text-muted">
-                      Alimenta a renda de benefícios: {formatMoney(account.balanceCents)}
-                    </span>
-                  )}
                 </div>
               </li>
             ))}
@@ -278,10 +271,6 @@ export default function AccountsPage() {
           onBilling={() => {
             closeMenu()
             openBilling(menuAccount.id, menuAccount.closingDay, menuAccount.dueDay)
-          }}
-          onToggleBenefit={() => {
-            closeMenu()
-            toggleBenefitAccount(menuAccount.id, !menuAccount.isBenefitAccount)
           }}
           onRemove={() => {
             closeMenu()

@@ -1,7 +1,6 @@
 'use client'
 
 import { Search } from 'lucide-react'
-import Link from 'next/link'
 import { AccountFilter } from './account-filter'
 import { MovementRow } from './movement-row'
 import { StatementSummary } from './statement-summary'
@@ -26,7 +25,6 @@ export default function MovementsPage() {
     goToPreviousMonth,
     goToNextMonth,
     statementAccounts,
-    hasBenefitAccount,
     accountNameById,
     accountId,
     setAccountId,
@@ -76,11 +74,6 @@ export default function MovementsPage() {
           </label>
           <SegmentedControl label="Tipo" options={DIRECTION_OPTIONS} value={direction} onChange={setDirection} />
           <AccountFilter accounts={statementAccounts} value={accountId} onChange={setAccountId} />
-          {hasBenefitAccount && (
-            <Link href="/movements/benefit" className="text-sm font-semibold text-primary-ink underline">
-              Ver extrato e resumo do benefício
-            </Link>
-          )}
         </div>
       </div>
 

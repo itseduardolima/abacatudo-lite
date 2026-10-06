@@ -177,8 +177,6 @@ export function useAccountsPage() {
     isSubmitting: createAccount.isPending,
     ruleError,
     // Fase 4: marca/desmarca qual conta CHECKING alimenta "renda de benefícios" (/settings/income).
-    toggleBenefitAccount: (id: string, isBenefitAccount: boolean) =>
-      updateAccount.mutate({ id, input: { isBenefitAccount } }),
     onConnectBank: () => void onConnectBank(),
     isConnectingBank: connectBank.isPending,
     connectError,

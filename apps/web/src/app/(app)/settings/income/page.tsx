@@ -6,7 +6,7 @@ import { MoneyInput } from '@/components/ui/MoneyInput'
 import { useIncomePage } from './use-income-page'
 
 export default function IncomePage() {
-  const { isLoading, register, errors, onSubmit, isSaving, isDirty, saved, benefitAccountName } = useIncomePage()
+  const { isLoading, register, errors, onSubmit, isSaving, isDirty, saved } = useIncomePage()
 
   return (
     <main className="mx-auto flex min-h-screen max-w-[420px] flex-col gap-6 px-4 pb-28 pt-8 md:pb-10">
@@ -25,15 +25,6 @@ export default function IncomePage() {
       {!isLoading && (
         <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
           <MoneyInput label="Salário" error={errors.income?.message} {...register('income')} />
-          <MoneyInput
-            label="Renda de benefícios"
-            error={errors.benefit?.message}
-            disabled={benefitAccountName != null}
-            {...register('benefit')}
-          />
-          {benefitAccountName && (
-            <p className="-mt-2 text-sm text-muted">Sincronizado da conta {benefitAccountName}.</p>
-          )}
           <Button type="submit" className="mt-2" state={isSaving ? 'loading' : 'idle'} disabled={!isDirty}>
             Salvar
           </Button>
