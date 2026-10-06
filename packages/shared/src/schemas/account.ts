@@ -25,8 +25,6 @@ export const accountSchema = z
     closingDay: z.number().int().nullable(),
     dueDay: z.number().int().nullable(),
     creditLimitCents: centsSchema.nullable(),
-    // Saldo sincronizado pelo Pluggy (Fase 4, TODO.md) — sempre null pra conta MANUAL/IMPORT.
-    balanceCents: centsSchema.nullable(),
     // Marca manual do usuário: "renda de benefícios" usa o saldo desta conta em vez do valor digitado
     // à mão (Fase 4). Só uma conta por usuário fica marcada por vez.
     // Marca manual do usuário — sem escolha, cai no monograma (avatar Fog com iniciais).

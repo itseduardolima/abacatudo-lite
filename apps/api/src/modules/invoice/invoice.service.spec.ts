@@ -37,7 +37,6 @@ function accountRow(overrides: Partial<AccountRow> = {}): AccountWithPluggyItem 
     closingDay: null,
     dueDay: null,
     creditLimitCents: null,
-    balanceCents: null,
     bankLogo: null,
     pluggyItemId: null,
     externalAccountId: null,

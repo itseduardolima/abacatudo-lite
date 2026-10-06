@@ -59,18 +59,13 @@ export function mapAccountFields(pluggyAccount: PluggyAccount): {
   closingDay: number | null
   dueDay: number | null
   creditLimitCents: number | null
-  balanceCents: number | null
 } {
-  const isCreditCard = pluggyAccount.type === 'CREDIT'
   const credit = pluggyAccount.creditData
   return {
-    type: isCreditCard ? 'CREDIT_CARD' : 'CHECKING',
-    closingDay: isCreditCard ? dayOfMonth(credit?.balanceCloseDate) : null,
-    dueDay: isCreditCard ? dayOfMonth(credit?.balanceDueDate) : null,
-    creditLimitCents: isCreditCard && credit?.creditLimit != null ? Math.round(credit.creditLimit * 100) : null,
-    // Cartão de crédito não usa isso pra nada (a fatura é calculada à parte) — fica null pra nunca ser
-    // confundido com "quanto falta pagar".
-    balanceCents: !isCreditCard && pluggyAccount.balance != null ? Math.round(pluggyAccount.balance * 100) : null,
+    type: 'CREDIT_CARD',
+    closingDay: dayOfMonth(credit?.balanceCloseDate),
+    dueDay: dayOfMonth(credit?.balanceDueDate),
+    creditLimitCents: credit?.creditLimit != null ? Math.round(credit.creditLimit * 100) : null,
   }
 }
 

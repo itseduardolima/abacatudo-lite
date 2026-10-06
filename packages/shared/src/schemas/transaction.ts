@@ -7,8 +7,6 @@ export type TransactionKind = z.infer<typeof transactionKindSchema>
 
 export const transactionStatusSchema = z.enum(['POSTED', 'PENDING'])
 export type TransactionStatus = z.infer<typeof transactionStatusSchema>
-
-// Mesma forma para /transactions (só CREDIT_CARD) e /movements (o resto) — quem separa é o endpoint, não o
 // schema (03-regras-negocio § Escopo, 04-padroes-codigo).
 export const transactionSchema = z
   .object({

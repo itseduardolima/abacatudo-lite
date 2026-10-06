@@ -163,9 +163,7 @@ enum AccountSource {
   PLUGGY
 }
 
-/// RLS por userId. O `type` decide o escopo (03-regras-negocio § Escopo): só CREDIT_CARD é gerenciada
-/// (categoria, pessoa, orçamento); CHECKING/CASH são movimentação, só consulta (04-padroes-codigo:
-/// TransactionRepository só devolve CREDIT_CARD, MovementRepository só o resto — mesma tabela).
+/// RLS por userId. Só CREDIT_CARD é gerenciada (03-regras-negocio § Escopo); o sync do Pluggy ignora o resto.
 model Account {
   id                String        @id @default(uuid())
   userId            String
@@ -177,9 +175,6 @@ model Account {
   closingDay        Int?
   dueDay            Int?
   creditLimitCents  Int?
-  // Saldo sincronizado pelo Pluggy (Fase 4) — só populado em CHECKING via runSync; conta MANUAL/IMPORT
-  // nunca tem saldo de verdade, fica null.
-  balanceCents      Int?
   // Marca manual do usuário (DESIGN_SYSTEM § Logos de bancos): qual logo mostrar, entre os 3 servidos
   // localmente em brand/bancos/ (validado pelo schema Zod, nunca string livre). Sem logo escolhido,
   // conta usa monograma (avatar Fog com iniciais).
@@ -246,9 +241,7 @@ enum TransactionStatus {
   PENDING
 }
 
-/// RLS por userId. "Cartão" x "movimentação" nunca é um campo aqui — é Account.type que decide
-/// (03-regras-negocio § Escopo); esta é a mesma tabela que TransactionRepository e MovementRepository leem
-/// com filtros diferentes (04-padroes-codigo). categoryId/personId/note só fazem sentido quando a conta é
+/// RLS por userId. categoryId/personId/note só fazem sentido quando a conta é
 /// CREDIT_CARD — a API rejeita fora disso. personId nasce sempre preenchido (padrão "Meu"); só fica null
 /// quando a transação está dividida — aí quem manda é a soma dos Split (03-regras-negocio § Atribuição de
 /// pessoa e § Só a minha parte).

@@ -34,7 +34,7 @@ describe('transactionSchema', () => {
     expect(transactionSchema.safeParse(VALID).success).toBe(true)
   })
 
-  it('rejeita campo extra (a mesma forma serve pra /transactions e /movements, sem vazar nada a mais)', () => {
+  it('rejeita campo extra', () => {
     expect(transactionSchema.safeParse({ ...VALID, userId: 'x' }).success).toBe(false)
   })
 

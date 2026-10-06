@@ -115,7 +115,6 @@ function accountRow(overrides: Partial<AccountRow> = {}): AccountRow {
     closingDay: 20,
     dueDay: 27,
     creditLimitCents: 500000,
-    balanceCents: null,
     bankLogo: null,
     pluggyItemId: 'item-1',
     externalAccountId: 'ext-acc-1',
@@ -412,13 +411,11 @@ describe('BankingService', () => {
     )
   })
 
-  it('manualSync: duas contas do mesmo item cada uma vira um upsert por seu próprio externalAccountId', async () => {
+  it('manualSync: só conta de cartão de crédito é sincronizada, conta BANK é ignorada', async () => {
     const items = itemsMock()
     items.findById.mockResolvedValue(itemRow())
     const accounts = accountsMock()
-    accounts.upsertFromSync
-      .mockResolvedValueOnce(accountRow({ id: 'acc-1', externalAccountId: 'ext-acc-1' }))
-      .mockResolvedValueOnce(accountRow({ id: 'acc-2', externalAccountId: 'ext-acc-2', type: 'CHECKING' }))
+    accounts.upsertFromSync.mockResolvedValueOnce(accountRow({ id: 'acc-1', externalAccountId: 'ext-acc-1' }))
     const pluggy = pluggyMock()
     pluggy.listAccounts.mockResolvedValue([
       { id: 'ext-acc-1', type: 'CREDIT', name: 'Nubank cartão', creditData: null },
@@ -429,22 +426,15 @@ describe('BankingService', () => {
 
     const result = await service.manualSync('user-1', 'item-1')
 
-    expect(accounts.upsertFromSync).toHaveBeenCalledTimes(2)
-    expect(accounts.upsertFromSync).toHaveBeenNthCalledWith(
-      1,
+    expect(accounts.upsertFromSync).toHaveBeenCalledTimes(1)
+    expect(accounts.upsertFromSync).toHaveBeenCalledWith(
       'user-1',
       'ext-acc-1',
       expect.objectContaining({ type: 'CREDIT_CARD' }),
       expect.any(Object),
     )
-    expect(accounts.upsertFromSync).toHaveBeenNthCalledWith(
-      2,
-      'user-1',
-      'ext-acc-2',
-      expect.objectContaining({ type: 'CHECKING' }),
-      expect.any(Object),
-    )
-    expect(result.accountsSynced).toBe(2)
+    expect(pluggy.listTransactions).toHaveBeenCalledTimes(1)
+    expect(result.accountsSynced).toBe(1)
   })
 
   it('manualSync: sem regra, a transação nasce "Meu" (personId do self)', async () => {
@@ -481,48 +471,6 @@ describe('BankingService', () => {
     await service.manualSync('user-1', 'item-1')
 
     expect(sync.upsertTransaction).toHaveBeenCalledWith('user-1', 'acc-1', 'self-42', null, expect.any(Object))
-  })
-
-  it('manualSync: conta de movimentação nunca ganha pessoa nem categoria, mesmo com Rule pro merchant', async () => {
-    const items = itemsMock()
-    items.findById.mockResolvedValue(itemRow())
-    const accounts = accountsMock()
-    accounts.upsertFromSync.mockResolvedValue(accountRow({ type: 'CHECKING' }))
-    const pluggy = pluggyMock()
-    pluggy.listAccounts.mockResolvedValue([{ id: 'ext-acc-1', type: 'BANK', name: 'Nubank conta', creditData: null }])
-    pluggy.listTransactions.mockResolvedValue({
-      results: [
-        {
-          id: 'tx-1',
-          amount: 50,
-          type: 'CREDIT',
-          operationType: null,
-          category: null,
-          categoryId: null,
-          status: 'POSTED',
-          date: '2026-09-21',
-          description: 'Pix recebido',
-          merchant: { businessName: 'Loja da Família' },
-          creditCardMetadata: null,
-        },
-      ],
-      next: null,
-    })
-    const sync = syncMock()
-    const rules = rulesMock()
-    // Regra existe (criada pelo lado do cartão), mas não vale pra movimentação.
-    rules.findMany.mockResolvedValue([ruleRow({ merchant: 'loja da família', personId: 'person-2' })])
-    const service = newService({ pluggy, items, accounts, sync, rules })
-
-    await service.manualSync('user-1', 'item-1')
-
-    expect(sync.upsertTransaction).toHaveBeenCalledWith(
-      'user-1',
-      'acc-1',
-      null,
-      null,
-      expect.objectContaining({ kind: 'INCOME' }),
-    )
   })
 
   it('manualSync: com Rule pro estabelecimento (normalizado), atribui a pessoa e a categoria da regra', async () => {

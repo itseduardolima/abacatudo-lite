@@ -185,14 +185,10 @@ export class BankingService {
     let accountsSynced = 0
     let transactionsSynced = 0
 
-    for (const pluggyAccount of pluggyAccounts) {
+    for (const pluggyAccount of pluggyAccounts.filter((candidate) => candidate.type === 'CREDIT')) {
       const fields = mapAccountFields(pluggyAccount)
-      const isCreditCard = fields.type === 'CREDIT_CARD'
-      // balanceCents fora do update quando o Pluggy não mandou saldo nesse sync (fields.balanceCents null):
-      // uma omissão pontual do lado do Pluggy não pode apagar o último saldo bom que já tínhamos — cartão
-      // de crédito nunca manda saldo mesmo (sempre null), então nunca atualiza aqui, o que já é o esperado.
-      const { balanceCents, closingDay, dueDay, creditLimitCents, ...updateBase } = fields
-      const updateFieldsWithoutBalance = {
+      const { closingDay, dueDay, creditLimitCents, ...updateBase } = fields
+      const updateFields = {
         ...updateBase,
         ...(closingDay != null ? { closingDay } : {}),
         ...(dueDay != null ? { dueDay } : {}),
@@ -206,7 +202,7 @@ export class BankingService {
         userId,
         pluggyAccount.id,
         { ...fields, name: pluggyAccount.name, source: 'PLUGGY', pluggyItemId: item.id },
-        { ...updateFieldsWithoutBalance, pluggyItemId: item.id, ...(balanceCents != null ? { balanceCents } : {}) },
+        { ...updateFields, pluggyItemId: item.id },
       )
       accountsSynced++
 
@@ -214,15 +210,18 @@ export class BankingService {
       do {
         const page = await this.pluggy.listTransactions(pluggyAccount.id, cursor)
         for (const tx of page.results) {
-          const mapped = mapTransaction(tx, isCreditCard)
+          const mapped = mapTransaction(tx, true)
           const merchant = mapped.merchant ?? null
           const cardLast4 = mapped.cardLast4 ?? null
-          // Pessoa/categoria só existem em cartão de crédito (03-regras-negocio § Escopo) — movimentação
-          // nunca ganha nenhum dos dois, nem por Rule.
-          const personId = isCreditCard
-            ? resolvePersonId(account.id, cardLast4, merchant, hintByAccountCard, ruleByMerchant, selfPerson.id)
-            : null
-          const categoryId = isCreditCard ? resolveCategoryId(merchant, ruleByMerchant) : null
+          const personId = resolvePersonId(
+            account.id,
+            cardLast4,
+            merchant,
+            hintByAccountCard,
+            ruleByMerchant,
+            selfPerson.id,
+          )
+          const categoryId = resolveCategoryId(merchant, ruleByMerchant)
           await this.sync.upsertTransaction(userId, account.id, personId, categoryId, mapped)
           transactionsSynced++
         }

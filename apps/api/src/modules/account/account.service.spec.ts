@@ -27,7 +27,6 @@ function row(
     closingDay: 20,
     dueDay: 27,
     creditLimitCents: 500000,
-    balanceCents: null,
     bankLogo: null,
     pluggyItemId: null,
     externalAccountId: null,

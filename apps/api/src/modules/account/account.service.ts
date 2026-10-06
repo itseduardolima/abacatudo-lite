@@ -90,7 +90,6 @@ function toDto(row: AccountWithPluggyItem): Account {
     closingDay: row.closingDay,
     dueDay: row.dueDay,
     creditLimitCents: row.creditLimitCents,
-    balanceCents: row.balanceCents,
     bankLogo: row.bankLogo as Account['bankLogo'],
     archivedAt: row.archivedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),

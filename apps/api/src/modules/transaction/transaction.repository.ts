@@ -23,9 +23,7 @@ export function isInOpenCycle(
 
 export type TransactionWithSplits = Transaction & { splits: { personId: string; amountCents: number }[] }
 
-// Só CREDIT_CARD (03-regras-negocio § Escopo) — o resto é MovementRepository, mesma tabela. `create` é a
-// exceção: lançamento manual (3.3) vale pra qualquer tipo de conta MANUAL/IMPORT, cartão ou não — quem
-// decide se a linha aparece em /transactions ou /movements depois é o tipo da própria Account, na leitura.
+// Só CREDIT_CARD (03-regras-negocio § Escopo) nas leituras.
 @Injectable()
 export class TransactionRepository {
   constructor(@Inject(PRISMA) private readonly prisma: PrismaService) {}
