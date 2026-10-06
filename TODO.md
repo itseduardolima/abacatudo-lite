@@ -17,6 +17,7 @@ sem conta de dinheiro no frontend) — não quando o código só "existe".
 
 ## Em andamento agora
 
+- **Extrato/Movimentações removidos (2026-10-06)**: o sistema só trata cartão de crédito. Saíram `/movements` (web e API), schemas `movement`, `Account.balanceCents` (migration `20261006123000_drop_movements_fields`); o sync do Pluggy só persiste contas `CREDIT`. Specs, BACKLOG (Épico 5 descartado) e SPRINTS atualizados.
 - **Sprint 0 concluída em 2026-09-21**, incluindo o **spike do Pluggy (0.6)**, fechado com dado real (spec 07).
 - **Sprint 1 concluída em 2026-09-22**: RLS (User/Session isentas, documentado), login por e-mail/senha,
   sessão de 30 dias com revogação, seed do primeiro usuário. Testado contra Postgres e API reais, e o
@@ -1138,8 +1139,8 @@ Escopo mudou a pedido do usuário (2026-09-22): toda transação nasce "Meu", se
 
 - [x] 6.1 — Fatura: `GET /invoice?accountId=&month=`, total − não é meu = meu, testado ao vivo
 - [x] 6.2 — "Meu" do mês (todos os cartões): `GET /invoice/summary?month=`, testado ao vivo
-- [x] 5.2 — Extrato de movimentação: `GET /movements` com filtro de conta/direção/mês/busca, testado ao vivo
-- [x] 5.3 — Totais de entrada/saída: `GET /movements/totals?month=`, testado ao vivo
+- [x] ~~5.2~~ (removido em 2026-10-06) — Extrato de movimentação: `GET /movements` com filtro de conta/direção/mês/busca, testado ao vivo
+- [x] ~~5.3~~ (removido em 2026-10-06) — Totais de entrada/saída: `GET /movements/totals?month=`, testado ao vivo
 
 ### Bugs achados só ao rodar de verdade (e corrigidos)
 

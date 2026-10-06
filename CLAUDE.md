@@ -27,7 +27,7 @@ Todo o contexto está em `docs/specs/`, nesta ordem:
 2. `docs/specs/01-arquitetura.md` — peças, isolamento por usuário, sync, jobs
 3. `docs/specs/02-tecnologias.md` — stack e o que NÃO usar
 4. `docs/specs/03-regras-negocio.md` — **fonte da verdade de comportamento**
-   (escopo cartão x Pix, pessoas, classificação, fatura "só a minha parte", orçamento) — toda
+   (escopo só cartão, pessoas, classificação, fatura "só a minha parte", orçamento) — toda
    feature nova precisa ser consistente com isso ou atualizá-lo junto
 5. `docs/specs/04-padroes-codigo.md` — estrutura de pastas, nomenclatura,
    vocabulário fixo, testes, commits
@@ -65,14 +65,11 @@ na verdade, "atualizar o spec" (avisar o usuário).
 - **O sistema é somente leitura em relação aos bancos.** Nenhuma chamada de
   pagamento/Pix/iniciação no `PluggyClient`. Credencial de banco nunca
   passa pela nossa API (só pelo widget do Pluggy). (spec 07, 08 § 14)
-- **Só compra no cartão de crédito é gerenciada.** Débito, Pix, TED, boleto,
-  saque e benefício (VR/VA) são só consulta, em área separada (`movement`,
-  `/movements`): sem categoria, pessoa, orçamento, relatório ou IA. O escopo é
-  decidido só pelo **tipo da conta** (`CREDIT_CARD`), sem heurística por
-  lançamento; `TransactionRepository` só devolve cartão de crédito e
-  `MovementRepository` só o resto. Renda e gastos fixos são
-  informados pelo usuário.
-  (spec 03 § Escopo)
+- **O sistema só trata cartão de crédito.** Não há extrato nem área de
+  movimentações: débito, Pix, TED, boleto, saque, conta corrente e benefício
+  (VR/VA) não são sincronizados nem exibidos. O sync do Pluggy só persiste
+  contas `CREDIT_CARD`; `TransactionRepository` só devolve cartão de crédito.
+  Renda e gastos fixos são informados pelo usuário. (spec 03 § Escopo)
 - **Gasto de terceiros no meu cartão é subtraído; a cobrança é só uma mensagem
   manual.** Não existe valor a receber, saldo por pessoa, "marcar pago" nem
   abatimento (decisão de produto); o User gera e envia o texto da conta pelo
@@ -80,7 +77,7 @@ na verdade, "atualizar o spec" (avisar o usuário).
   fatura mostra total − não é meu − a classificar = **meu**, e vale a
   invariante `Fatura = Meu + Não é meu + A classificar` (spec 03).
 - **Pagamento de fatura nunca é gasto** (as compras já entram uma a uma pelo
-  cartão); a linha `CARD_PAYMENT` é excluída do gasto. (spec 03 § Movimentações)
+  cartão); a linha `CARD_PAYMENT` é excluída do gasto. (spec 03 § Pagamento de fatura)
 - **Segredo/token só criptografado em repouso ou fora do banco; nunca em
   log, nunca no browser.** `DATA_ENCRYPTION_KEY` (AES-256-GCM) para o que
   precisa ficar no banco. Resposta de API externa é `unknown` até passar por

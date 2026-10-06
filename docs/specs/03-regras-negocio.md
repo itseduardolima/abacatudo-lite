@@ -6,37 +6,20 @@ todo "mês" e "dia" em `America/Manaus`.
 
 ## Escopo: o que o sistema gerencia (leia primeiro)
 
-Decisão de produto: **só compra no cartão de crédito é gerenciada.** Débito,
-Pix, TED, boleto, saque, saldo de benefício (VR/VA) e demais movimentações
-de conta **podem ser exibidos, mas em telas e funcionalidades separadas**, e
-nunca se misturam com a gestão.
+Decisão de produto: **o sistema só trata cartão de crédito.** Não há extrato,
+área de movimentações, conta corrente, débito, Pix, TED, boleto, saque nem
+benefício (VR/VA): nada disso é sincronizado, guardado ou exibido.
 
-| Vale só para compra no cartão de crédito        | Vale para débito, Pix, benefício e contas ("Movimentações") |
-| ----------------------------------------------- | ----------------------------------------------------------- |
-| Categoria, regras, IA de categoria              | Lista/extrato, filtros e busca                              |
-| Pessoa (meu x não é meu, padrão é meu), divisão | Totais de entrada e saída do mês (só informativos)          |
-| Fatura "só a minha parte"                       | Rótulo de transferência entre contas próprias               |
-| Orçamento, envelopes, alertas, ritmo, parcelas  | Nota opcional por lançamento                                |
-| Relatórios, assinaturas, "onde economizar"      | —                                                           |
-| Resumo e chat da IA                             | —                                                           |
-
-- **Cartão = cartão de crédito.** O que decide é o **tipo da conta**
-  (`Account.type = CREDIT_CARD`), sem heurística por lançamento: toda
-  transação de uma conta de cartão de crédito é gerenciada, e toda transação
-  de qualquer outra conta é movimentação. Não existe "na dúvida", nem campo
-  de canal por lançamento.
-- **Benefício (VR/VA) não existe como conceito**: saldos e Pix de qualquer
-  conta que não seja cartão de crédito são movimentações comuns, ignoradas
-  pela gestão.
+- **Cartão = conta `Account.type = CREDIT_CARD`.** A sincronização com o
+  Pluggy só busca contas de cartão de crédito (`CREDIT`) e suas transações;
+  qualquer outra conta do item é ignorada, e conectar um banco nunca cria
+  conta que não seja cartão.
 - **Consequência assumida**: gasto no débito, no Pix ou no saldo de benefício
-  **não entra** no orçamento nem nos relatórios. Por isso renda e
-  gastos fixos são **informados por você** (ver "Orçamento mensal"), em vez de
-  detectados nas movimentações.
+  **não entra** no orçamento nem nos relatórios. Por isso renda e gastos
+  fixos são **informados por você** (ver "Orçamento mensal").
 - A API rejeita (`422 NOT_A_CARD_TRANSACTION`) categoria, pessoa, split ou
   regra em lançamento de conta que não é `CREDIT_CARD`.
-- `TransactionRepository` só devolve lançamentos de contas `CREDIT_CARD`;
-  `MovementRepository` só devolve os das demais — uma tela ou relatório não
-  consegue misturar os dois por acidente.
+- `TransactionRepository` só devolve lançamentos de contas `CREDIT_CARD`.
 
 ## Usuários e acesso
 
@@ -84,10 +67,8 @@ nunca se misturam com a gestão.
 
 ## Contas (Account)
 
-- Tipos: `CREDIT_CARD` (a única gerenciada), `CHECKING` (conta corrente,
-  débito, carteira de benefício — qualquer conta que não seja cartão de
-  crédito) e `CASH`. O tipo decide o escopo (ver "Escopo"); no import manual
-  o User escolhe o tipo da conta.
+- Tipos: `CREDIT_CARD` (a única que o sync cria e a única gerenciada); o enum
+  mantém `CHECKING` e `CASH` só por compatibilidade, sem uso (ver "Escopo").
 - Origem (`source`): `PLUGGY` (sincronizada), `IMPORT` (OFX/CSV) ou
   `MANUAL`. Uma conta tem uma origem só.
 - Conta `PLUGGY` é somente leitura: o User não edita valor/data de uma
@@ -112,8 +93,7 @@ imutável), `merchant`
 `personId?` e splits.
 
 `kind`: `EXPENSE`, `REFUND`, `INCOME`, `CARD_PAYMENT` (a linha de pagamento
-da fatura, dos dois lados) e `TRANSFER` (entre contas do próprio User, só
-rótulo em Movimentações).
+da fatura, dos dois lados) e `TRANSFER`.
 
 - **Idempotência**: `(accountId, externalId)` é único. Sincronizar de novo
   nunca duplica.
@@ -198,35 +178,10 @@ Regras:
   confirmadas).
 - `Rule` é do User (RLS). Não existe regra global compartilhada entre Users.
 
-## Movimentações (Pix e contas) — área separada
+## Pagamento de fatura
 
-Tudo que **não** é compra no cartão de crédito (débito, Pix, TED, boleto,
-saque, benefício). É consulta, não gestão: telas próprias,
-endpoints próprios (`/movements`), módulo próprio (`movement`).
-
-- **O que existe**: lista/extrato de todas as contas, com filtro por conta,
-  direção (entrada/saída), mês e busca por contraparte/descrição; **totais
-  de entrada e saída do mês**, rotulados como "não entram no orçamento"; nota
-  opcional por lançamento.
-- **O que NÃO existe aqui**: categoria, pessoa, divisão, regra, envelope,
-  alerta, relatório de economia e IA. Nada de Movimentações alimenta o
-  orçamento ou os relatórios do cartão.
-- **Rótulos informativos (P2)**: lançamento que casa com outro em **conta
-  própria** (mesmo valor, sentidos opostos, <= 2 dias) recebe o rótulo
-  "transferência entre suas contas" (`kind = TRANSFER`) para não parecer
-  gasto no extrato — caso real: Bee Vale → InfinitePay → Nubank. Se houver
-  mais de um candidato, **não rotula** (ambíguo). O saldo de pagamento de
-  fatura na conta corrente recebe o rótulo `CARD_PAYMENT`. Esses rótulos não
-  mudam nenhum total do orçamento (que já ignora tudo o que não é cartão).
-- **Pagamento de fatura nunca vira gasto em dobro por construção**: as
-  compras entram uma a uma pelo cartão; o pagamento fica em Movimentações
-  (conta corrente) e a linha `CARD_PAYMENT` do lado do cartão é excluída do
-  gasto.
-- **Dado de terceiros**: Pix traz nome do favorecido/pagador. Fica só nesta
-  área (extrato, consulta do próprio User) — não vai para relatório do cartão, insight, export nem IA
-  (ver 08 § 13 e 10-ia).
-- **Benefício (VR/VA)**: a recarga aparece aqui como entrada, só
-  informativa, e não afeta o orçamento.
+Pagamento de fatura nunca vira gasto em dobro: as compras entram uma a uma
+pelo cartão e a linha `CARD_PAYMENT` do lado do cartão é excluída do gasto.
 
 ## Só a minha parte (gasto de terceiros no meu cartão)
 
@@ -285,8 +240,7 @@ sistema, por uma **mensagem de texto que o User gera e envia manualmente**
   a mensagem manual de conta.
 - O gasto de terceiros continua **visível** (lista de lançamentos filtrada
   por pessoa, e o "Não é meu" da fatura), mas fora de todos os totais "meus".
-- Reembolso que a família fizer por Pix aparece em Movimentações como
-  qualquer entrada; **não abate nada** (não há saldo) e não afeta o "Meu".
+- Reembolso que a família fizer por Pix **não aparece no sistema e não abate nada** (não há saldo) e não afeta o "Meu".
 
 ### Mensagem de conta (WhatsApp)
 

@@ -286,10 +286,8 @@ rigor do § 1.
   mensagem de conta (03) só sai do app quando o User toca em "WhatsApp" ou
   "Copiar"; nenhum número é guardado, o texto nunca vai para log e o envio
   não é registrado.
-- **Pix é dado de terceiros**: traz nome do favorecido/pagador. Fica só na
-  área Movimentações (extrato, tela de consulta do próprio User) — não entra em relatório do cartão,
-  insight, log, prompt da IA nem export por padrão do assistente. Quem não quer nem armazenar isso pode
-  desligar a sincronização de conta corrente e ficar só com cartão.
+- **Pix e conta corrente não são sincronizados**: o sync só persiste cartão de crédito, então nome de
+  favorecido/pagador nunca é armazenado.
 - **Minimização com fornecedores**: Pluggy recebe o necessário para a conexão
   (feita pelo próprio titular); Claude recebe o mínimo (`10-ia.md`).
 - **Exportar** (CSV/JSON) e **excluir conta** disponíveis ao próprio User,

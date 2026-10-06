@@ -41,9 +41,7 @@ https://claude.ai/artifact/CAyHffJCJ5wDrutNeEai1k. É referência visual, não c
 
 ## Telas previstas (para o protótipo)
 
-Duas áreas na navegação, **deliberadamente separadas**: **Cartão** (gestão) e
-**Movimentações** (consulta de Pix e contas). Nada de Movimentações aparece
-dentro das telas de gestão, nem o contrário.
+Só a área de **Cartão** (gestão); não há extrato nem movimentações.
 
 **Cartão (gestão)**
 
@@ -62,13 +60,6 @@ dentro das telas de gestão, nem o contrário.
 6. **Relatórios**: por categoria, estabelecimento, comparação mensal,
    assinaturas, parcelas futuras, "onde economizar" — só cartão.
 7. **Assistente (IA)**: chat + resumo do mês — só cartão.
-
-**Movimentações (só consulta)**
-
-8. **Movimentações** (fundo Fog, ativo em Forest, sem lima): extrato de débito, Pix e contas, filtros (conta, entrada/saída,
-   mês), busca por contraparte, totais de entrada e saída do mês marcados
-   como "não entram no orçamento", rótulo "transferência entre suas contas".
-   Sem categoria, sem pessoa, sem gráfico de economia.
 
 **Comum**
 

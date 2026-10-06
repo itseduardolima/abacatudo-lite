@@ -38,8 +38,7 @@ desenvolvedor, mais a página de preços e a documentação do Pluggy.
 | Meu Pluggy      | #200 `MeuPluggy`                              | via OAuth    | sim               | ONLINE |
 
 - **A hipótese anterior estava errada**: a InfinitePay **tem** conector. O Bee Vale não: entra só por
-  import OFX/CSV ou lançamento manual (e como é conta de movimentação,
-  isso quase não custa nada).
+  import OFX/CSV ou lançamento manual.
 - **Todos autenticam por OAuth do Open Finance**, com CPF como único campo: o usuário é levado ao
   banco para consentir. Confirma o desenho: senha de banco **nunca** passa pela nossa API.
 - Vários conectores marcam `supportsPaymentInitiation`. **Ignoramos**: o sistema é somente leitura e
@@ -90,14 +89,14 @@ Consequências no desenho:
   (`nextAutoSyncAt` = +24h). O nosso job só lê.
 - **Escopo pedido pelo Meu Pluggy é fixo e maior que o necessário**: contas, investimentos, cartões,
   empréstimos e identidade. Não dá para reduzir. O AbacaTudo **lê tudo o que a API entrega e persiste só**
-  cartão de crédito e movimentações; investimentos, empréstimos e dados de identidade são descartados na
-  borda (`PluggyClient`), nunca gravados.
+  contas e transações de cartão de crédito (`CREDIT`); contas `BANK`, investimentos, empréstimos e dados de
+  identidade são descartados no sync, nunca gravados.
 - **Um item por usuário, com várias contas dentro**: o item do Nubank devolveu 2 contas (`BANK/CHECKING_ACCOUNT` e
-  `CREDIT/CREDIT_CARD`). Só as contas marcadas na tela de autorização aparecem.
+  `CREDIT/CREDIT_CARD`); só a de cartão é sincronizada. Só as contas marcadas na tela de autorização aparecem.
 
 ### Formato dos dados (o que o `PluggyClient` precisa tratar)
 
-Verificado em 451 transações de cartão e 500 de conta corrente. Só formato e contagem, nunca valores.
+Verificado em 451 transações de cartão. Só formato e contagem, nunca valores.
 
 | Assunto              | Como vem                                                                                                                                      | Regra no AbacaTudo                                                                                                                               |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -113,8 +112,6 @@ Verificado em 451 transações de cartão e 500 de conta corrente. Só formato e
 | **Cartão adicional** | `creditCardMetadata.cardNumber` (final) por transação, e `creditData.additionalCards` na conta. O item tem **2 finais** (428 e 23 transações) | **`CardHolderHint` é viável direto**: final do cartão → pessoa. Resolve "empresto meu cartão" sem classificar à mão                              |
 | Categoria            | Vem em **todas** as linhas (34 no cartão, 21 na conta), em inglês (`Groceries`, `Digital services`, `Shopping`...)                            | Vira `categorySuggested` inicial (grátis), com tabela de mapeamento para as nossas categorias em português. A qualidade se mede antes de confiar |
 | Estabelecimento      | `merchant` só em ~23% das linhas; `description` = `descriptionRaw` sempre                                                                     | Normalizar o estabelecimento nós mesmos (regras + IA)                                                                                            |
-| Conta corrente       | `operationType`: `PIX` (76%), `CARTAO` (débito), `TRANSFERENCIA_MESMA_INSTITUICAO`, `BOLETO`, `RESGATE_APLIC_FINANCEIRA`...                   | Confirma o escopo: tudo isso é **movimentação**, fora da gestão                                                                                  |
-| Terceiros            | `paymentData.payer` / `receiver` trazem quem pagou/recebeu                                                                                    | Só na área Extrato; nunca em relatório nem na IA (08 § 13)                                                                                       |
 | `id`                 | Único por transação                                                                                                                           | Chave de idempotência: `(accountId, externalId = id)`                                                                                            |
 
 Fontes: [preços](https://www.pluggy.ai/pricing), [FAQ](https://docs.pluggy.ai/en/docs/get-started/faq),

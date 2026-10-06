@@ -21,7 +21,7 @@ apps/api/src/
       account.service.spec.ts
       account.repository.ts
       dto/
-    transaction/  person/  category/  rule/  movement/  budget/
+    transaction/  person/  category/  rule/  budget/
     statement/    import/  banking/   insight/  ai/     user/   health/
       (mesma forma)
   common/
@@ -123,24 +123,23 @@ de regra chega com `message` em português pronta para exibir.
 Código em inglês; texto ao usuário, docs e comentários em português.
 Vocabulário fixo de domínio:
 
-| Negócio (PT)                | Código (EN)                                                                                    |
-| --------------------------- | ---------------------------------------------------------------------------------------------- |
-| Usuário                     | `User`                                                                                         |
-| Pessoa (eu / familiar)      | `Person` (`isSelf`)                                                                            |
-| Conta / cartão / carteira   | `Account` (`type`: `CREDIT_CARD` \| `CHECKING` \| `CASH`)                                      |
-| Lançamento                  | `Transaction` (`direction`: `IN` \| `OUT`)                                                     |
-| Tipo do lançamento          | `kind`: `EXPENSE` \| `INCOME` \| `TRANSFER` \| `REFUND` \| `CARD_PAYMENT`                      |
-| Categoria                   | `Category`                                                                                     |
-| Regra                       | `Rule`                                                                                         |
-| Divisão de compra           | `Split`                                                                                        |
-| Pix / movimentação de conta | `Movement` (lançamento de conta que não é `CREDIT_CARD`)                                       |
-| A classificar               | `inbox` (transação com `personId = null`)                                                      |
-| Meu / não é meu             | `mine` / `notMine` (`Statement`: `totalCents`, `notMineCents`, `unassignedCents`, `mineCents`) |
-| Orçamento / envelope        | `Budget` / `Envelope`                                                                          |
-| Renda                       | `income`                                                                                       |
-| Conexão bancária (Pluggy)   | `PluggyItem`                                                                                   |
-| Consentimento               | `consent` (`consentExpiresAt`)                                                                 |
-| Assinatura / recorrência    | `recurring`                                                                                    |
+| Negócio (PT)              | Código (EN)                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------------------- |
+| Usuário                   | `User`                                                                                         |
+| Pessoa (eu / familiar)    | `Person` (`isSelf`)                                                                            |
+| Conta / cartão / carteira | `Account` (`type`: `CREDIT_CARD` \| `CHECKING` \| `CASH`)                                      |
+| Lançamento                | `Transaction` (`direction`: `IN` \| `OUT`)                                                     |
+| Tipo do lançamento        | `kind`: `EXPENSE` \| `INCOME` \| `TRANSFER` \| `REFUND` \| `CARD_PAYMENT`                      |
+| Categoria                 | `Category`                                                                                     |
+| Regra                     | `Rule`                                                                                         |
+| Divisão de compra         | `Split`                                                                                        |
+| A classificar             | `inbox` (transação com `personId = null`)                                                      |
+| Meu / não é meu           | `mine` / `notMine` (`Statement`: `totalCents`, `notMineCents`, `unassignedCents`, `mineCents`) |
+| Orçamento / envelope      | `Budget` / `Envelope`                                                                          |
+| Renda                     | `income`                                                                                       |
+| Conexão bancária (Pluggy) | `PluggyItem`                                                                                   |
+| Consentimento             | `consent` (`consentExpiresAt`)                                                                 |
+| Assinatura / recorrência  | `recurring`                                                                                    |
 
 Comentários: mínimos, em português, no máximo 1 linha, só quando o código não explica sozinho um porquê
 não óbvio (uma invariante, uma pegadinha). Nunca parafrasear o que a linha já diz.
@@ -188,8 +187,7 @@ Backend (`apps/api`), Jest:
 
 - `*.service.spec.ts` com `Repository` mockado: **toda regra de
   [03-regras-negocio](./03-regras-negocio.md) precisa de teste unitário** —
-  escopo por tipo de conta (só `CREDIT_CARD` é gerenciada; débito/Pix
-  nunca entram em categoria, orçamento nem IA),
+  escopo por tipo de conta (só `CREDIT_CARD` é sincronizada e gerenciada),
   rejeição de categoria/pessoa/split fora do cartão, rateio que fecha em
   centavos, invariante da fatura (`Fatura = Meu + Não é meu + A classificar`), envelope/alerta uma vez por
   mês, detecção de assinatura, fuso (compra 23h30 do dia 31).

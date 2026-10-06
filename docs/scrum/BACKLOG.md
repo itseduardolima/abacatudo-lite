@@ -6,8 +6,8 @@ Points (Fibonacci: 1, 2, 3, 5, 8) — referência inicial, recalibrar depois da
 Sprint 1.
 
 **Escopo do produto:** só **compra no cartão** é gerenciada (categoria,
-pessoa, orçamento, relatórios, IA). Pix e contas são só consulta, numa área
-separada (Épico 5). Ver `03-regras-negocio.md` § Escopo.
+pessoa, orçamento, relatórios, IA); Pix, contas e extrato foram removidos
+(Épico 5 descartado). Ver `03-regras-negocio.md` § Escopo.
 
 Prioridade: **P0** bloqueia o MVP (importar extrato, classificar, ver o mês),
 **P1** é necessário para uso real diário, **P2** melhora depois.
@@ -76,18 +76,10 @@ Prioridade: **P0** bloqueia o MVP (importar extrato, classificar, ver o mês),
 | 4.6 | Como Dono, quero gerenciar minhas regras.                                          | Listar/editar/desativar; prioridade por especificidade                                                                 | 3   | P1  |
 | 4.7 | Como Dono, quero sugestão de pessoa por padrão consistente (>= 3 iguais).          | Só sugere, não aplica                                                                                                  | 2   | P2  |
 
-## Épico 5 — Movimentações (Pix e contas) — área separada
+## Épico 5 — Movimentações (Pix e contas) — DESCARTADO (2026-10-06)
 
-Só consulta. Sem categoria, pessoa, orçamento, relatório ou IA. Regra em
-`03-regras-negocio.md` § Movimentações.
-
-| #   | HU                                                                                       | Critérios de aceite                                                                                                                                                                                                    | Pts | P   |
-| --- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | --- |
-| 5.1 | Como sistema, quero **separar cartão de crédito de movimentações** pelo tipo da conta.   | Só `CREDIT_CARD` é gerenciada; `TransactionRepository` só devolve compras dela e `MovementRepository` o resto; import exige escolher o tipo; teste provando que débito/Pix nunca entram em categoria, orçamento nem IA | 2   | P0  |
-| 5.2 | Como Dono, quero ver o **extrato de débito, Pix e contas** numa tela separada.           | `/movements` só devolve lançamentos de contas não `CREDIT_CARD`; filtros conta/entrada-saída/mês; busca por contraparte; categoria/pessoa/split rejeitados (`422`)                                                     | 3   | P1  |
-| 5.3 | Como Dono, quero **totais de entrada e saída do mês** nas movimentações.                 | Rotulados "não entram no orçamento"; nenhum total daqui alimenta orçamento/relatório                                                                                                                                   | 2   | P1  |
-| 5.4 | Como Dono, quero o rótulo **"transferência entre suas contas"** e "pagamento de fatura". | Mesmo valor, sentidos opostos, contas do próprio User, <= 2 dias; ambíguo não rotula; não altera nenhum total                                                                                                          | 5   | P2  |
-| 5.5 | Como Dono, quero uma **nota opcional** por movimentação.                                 | Texto puro, escapado; só nota, sem categoria                                                                                                                                                                           | 1   | P2  |
+Extrato e movimentações foram removidos: o sistema só trata cartão de crédito
+e o sync ignora qualquer outra conta. Ver `03-regras-negocio.md` § Escopo.
 
 ## Épico 6 — Fatura só com a minha parte
 

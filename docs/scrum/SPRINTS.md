@@ -50,7 +50,7 @@ Pluggy entra depois (Sprint 6) sobre um domínio que já funciona.
 | 1      | Auth + isolamento por usuário                   | 1.1, 1.2, 1.3, 1.9                                     | Login por e-mail/senha; RLS provada com 2 Users; sessão revogável       |
 | 2      | Contas, pessoas, categorias, import, lançamento | 2.1, 2.2, 2.4, 3.5, 3.1, 3.4, 5.1, 3.3 (por último)    | Importo um OFX/CSV e vejo as compras do cartão (Pix já separado)        |
 | 3      | Classificação (o coração do produto)            | 4.1, 4.2, 4.4, 4.5                                     | Toda transação nasce "Meu"; corrigir pessoa em 1 toque, regras, divisão |
-| 4      | Fatura só com a minha parte + Movimentações     | 5.2, 5.3, 6.1, 6.2                                     | Fatura mostra total, não é meu e "Meu"; extrato de Pix separado         |
+| 4      | Fatura só com a minha parte                     | 6.1, 6.2                                               | Fatura mostra total, não é meu e "Meu"                                  |
 | 5      | Orçamento e relatórios                          | 7.1, 8.6, 9.1                                          | Teto do mês, para onde vai o dinheiro                                   |
 | 6      | Integração Pluggy                               | 8.1–8.5 (+ 2.3)                                        | Nubank/BB/PicPay sincronizando sozinhos; aviso de consentimento         |
 | 7      | Insights e IA                                   | 9.2–9.5, 10.1, 10.2, 10.4, 10.5                        | Assinaturas, "onde economizar", resumo e sugestão de categoria por IA   |
@@ -61,13 +61,12 @@ motivo registrado.
 
 ## Riscos conhecidos (acompanhar por sprint)
 
-| Risco                                                    | Mitigação                                                                         |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Pluggy sem conector para InfinitePay/Bee Vale            | Sem impacto na gestão: são só movimentações; import cobre se quiser ver o extrato |
-| Plano gratuito do Pluggy não cobrir o 2º usuário         | Spike 0.6; 2º usuário pode usar só import                                         |
-| Categorização ruim gera desconfiança                     | Correção em 1 toque + regras que aprendem; IA só sugere                           |
-| Débito/Pix tratados como cartão (ou o contrário)         | Escopo decidido só pelo tipo da conta, sem heurística; teste dedicado na HU 5.1   |
-| "Meu" errado por split mal fechado                       | Invariante Fatura = Meu + Não é meu testada; soma dos splits obrigatória          |
-| Vazamento entre usuários por query esquecida             | RLS + teste com 2 Users em todo módulo                                            |
-| Vazamento de segredo (Pluggy, IA, chave de criptografia) | `.env` fora do git, `deploy-check`, rotação documentada, redaction de log         |
-| Perda do banco                                           | Backup criptografado fora da VPS + drill mensal                                   |
+| Risco                                                    | Mitigação                                                                       |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Plano gratuito do Pluggy não cobrir o 2º usuário         | Spike 0.6; 2º usuário pode usar só import                                       |
+| Categorização ruim gera desconfiança                     | Correção em 1 toque + regras que aprendem; IA só sugere                         |
+| Débito/Pix tratados como cartão (ou o contrário)         | Escopo decidido só pelo tipo da conta, sem heurística; teste dedicado na HU 5.1 |
+| "Meu" errado por split mal fechado                       | Invariante Fatura = Meu + Não é meu testada; soma dos splits obrigatória        |
+| Vazamento entre usuários por query esquecida             | RLS + teste com 2 Users em todo módulo                                          |
+| Vazamento de segredo (Pluggy, IA, chave de criptografia) | `.env` fora do git, `deploy-check`, rotação documentada, redaction de log       |
+| Perda do banco                                           | Backup criptografado fora da VPS + drill mensal                                 |

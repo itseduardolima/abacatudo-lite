@@ -96,7 +96,6 @@ account       # contas/cartões/carteiras
 transaction   # compras no cartão: classificação, divisão (só contas `CREDIT_CARD`)
 category      # categorias
 rule          # regras de categoria/pessoa
-movement      # Pix e movimentações de conta (só consulta, fora da gestão)
 budget        # orçamento mensal, envelopes, alertas
 statement     # visão da fatura: total, não é meu, a classificar, meu
 import        # OFX/CSV
