@@ -56,27 +56,3 @@ export const updateAccountInputSchema = z
   })
   .strict()
 export type UpdateAccountInput = z.infer<typeof updateAccountInputSchema>
-
-// closingDay/dueDay/creditLimitCents só fazem sentido em CREDIT_CARD — a API rejeita se vierem para
-// CHECKING/CASH (08-seguranca § 8: mass assignment é sobre aceitar campo que não devia estar ali, não só
-// sobre o formato dele).
-export const createAccountInputSchema = z
-  .object({
-    name: accountNameSchema,
-    type: accountTypeSchema,
-    source: accountSourceSchema.exclude(['PLUGGY']).default('MANUAL'), // PLUGGY só é setado pelo sync (Sprint 6), nunca pelo cliente.
-    closingDay: dayOfMonthSchema.optional(),
-    dueDay: dayOfMonthSchema.optional(),
-    creditLimitCents: centsSchema.optional(),
-  })
-  .strict()
-  .superRefine((input, ctx) => {
-    if (input.type !== 'CREDIT_CARD') {
-      for (const field of ['closingDay', 'dueDay', 'creditLimitCents'] as const) {
-        if (input[field] !== undefined) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, path: [field], message: 'Só se aplica a cartão de crédito.' })
-        }
-      }
-    }
-  })
-export type CreateAccountInput = z.infer<typeof createAccountInputSchema>

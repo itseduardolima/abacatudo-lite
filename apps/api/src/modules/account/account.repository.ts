@@ -12,10 +12,6 @@ export type AccountWithPluggyItem = Account & {
 export class AccountRepository {
   constructor(@Inject(PRISMA) private readonly prisma: PrismaService) {}
 
-  create(userId: string, data: Omit<Prisma.AccountUncheckedCreateInput, 'userId'>): Promise<Account> {
-    return this.prisma.account.create({ data: { ...data, userId } })
-  }
-
   findMany(userId: string, includeArchived: boolean): Promise<AccountWithPluggyItem[]> {
     return this.prisma.account.findMany({
       where: { userId, ...(includeArchived ? {} : { archivedAt: null }) },

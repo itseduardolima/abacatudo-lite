@@ -1,25 +1,11 @@
 import { Injectable } from '@nestjs/common'
-import type { Account, CreateAccountInput, UpdateAccountInput } from '@gastos/shared'
+import type { Account, UpdateAccountInput } from '@gastos/shared'
 import { DomainError, NotFoundError } from '../../common/errors/domain.error'
 import { AccountRepository, type AccountWithPluggyItem } from './account.repository'
 
 @Injectable()
 export class AccountService {
   constructor(private readonly repo: AccountRepository) {}
-
-  async create(userId: string, input: CreateAccountInput): Promise<Account> {
-    const row = await this.repo.create(userId, {
-      name: input.name,
-      type: input.type,
-      source: input.source,
-      closingDay: input.closingDay ?? null,
-      dueDay: input.dueDay ?? null,
-      creditLimitCents: input.creditLimitCents ?? null,
-    })
-    // Recém-criada, sempre MANUAL (source PLUGGY só existe pelo sync) — nunca tem PluggyItem pra puxar
-    // lastSyncAt.
-    return toDto({ ...row, pluggyItem: null })
-  }
 
   async list(userId: string, includeArchived: boolean): Promise<Account[]> {
     const rows = await this.repo.findMany(userId, includeArchived)

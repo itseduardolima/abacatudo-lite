@@ -1,6 +1,6 @@
 'use client'
 
-import type { Account, AccountType } from '@gastos/shared'
+import type { Account } from '@gastos/shared'
 import { AlertTriangle, Check, EllipsisVertical } from 'lucide-react'
 import { AccountActionsSheet } from './account-actions-sheet'
 import { AccountBillingSheet } from './account-billing-sheet'
@@ -9,28 +9,15 @@ import { BankLogoPicker } from './bank-logo-picker'
 import { Button } from '@/components/ui/Button'
 import { BackIcon, IconButton } from '@/components/ui/IconButton'
 import { InlineAlert } from '@/components/ui/InlineAlert'
-import { Input } from '@/components/ui/Input'
 import { BankAvatar } from '@/components/finance/BankAvatar'
 import { formatAccountType } from '@/lib/utils/format-account-type'
 import { formatSyncedAt } from '@/lib/utils/format-date'
 import { useAccountsPage } from './use-accounts-page'
 
-const TYPE_OPTIONS: AccountType[] = ['CREDIT_CARD', 'CHECKING', 'CASH']
-
 export default function AccountsPage() {
   const {
     accounts,
     isLoadingAccounts,
-    isFormOpen,
-    openForm,
-    closeForm,
-    register,
-    errors,
-    type,
-    setType,
-    onSubmit,
-    isSubmitting,
-    ruleError,
     onConnectBank,
     isConnectingBank,
     connectError,
@@ -68,7 +55,6 @@ export default function AccountsPage() {
   } = useAccountsPage()
 
   const connectedAccounts = accounts.filter((account) => account.source === 'PLUGGY')
-  const manualAccounts = accounts.filter((account) => account.source !== 'PLUGGY')
 
   const moreButton = (account: Account) => (
     <Button
@@ -99,8 +85,8 @@ export default function AccountsPage() {
 
       {isLoadingAccounts && <p className="text-text">Carregando…</p>}
 
-      {!isLoadingAccounts && accounts.length === 0 && !isFormOpen && (
-        <p className="text-text">Nenhuma conta ainda. Conecte um banco ou crie a primeira abaixo.</p>
+      {!isLoadingAccounts && accounts.length === 0 && (
+        <p className="text-text">Nenhuma conta ainda. Conecte um banco abaixo.</p>
       )}
 
       {connectedAccounts.length > 0 && (
@@ -186,76 +172,11 @@ export default function AccountsPage() {
         </section>
       )}
 
-      {manualAccounts.length > 0 && (
-        <section>
-          <h2 className="text-base font-bold text-ink">Manuais</h2>
-          <ul className="mt-1 flex flex-col">
-            {manualAccounts.map((account) => (
-              <li key={account.id} className="flex items-center gap-3 border-b border-surface py-3.5 last:border-b-0">
-                <button type="button" onClick={() => openLogoPicker(account.id)} aria-label="Escolher bandeira">
-                  <BankAvatar
-                    bankLogo={account.bankLogo}
-                    fallbackInitial={account.name.charAt(0).toUpperCase()}
-                    size={44}
-                  />
-                </button>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-ink" title={account.name}>
-                    {account.name}
-                  </p>
-                  <p className="text-sm text-muted">{formatAccountType(account.type)}</p>
-                </div>
-                {moreButton(account)}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       <div className="flex flex-col gap-3">
         <Button variant="outline" state={isConnectingBank ? 'loading' : 'idle'} onClick={onConnectBank}>
           Conectar banco
         </Button>
-
-        {!isFormOpen && (
-          <Button variant="outline" onClick={openForm}>
-            Nova conta
-          </Button>
-        )}
       </div>
-
-      {isFormOpen && (
-        <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
-          {ruleError && <InlineAlert>{ruleError}</InlineAlert>}
-          <Input label="Nome" placeholder="Nubank, Carteira..." error={errors.name?.message} {...register('name')} />
-
-          <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-text">Tipo</span>
-            <div className="flex flex-wrap gap-2">
-              {TYPE_OPTIONS.map((option) => (
-                <Button
-                  key={option}
-                  type="button"
-                  size="sm"
-                  variant={type === option ? 'primary' : 'outline'}
-                  onClick={() => setType(option)}
-                >
-                  {formatAccountType(option)}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-2 flex gap-3">
-            <Button type="submit" state={isSubmitting ? 'loading' : 'idle'}>
-              Salvar
-            </Button>
-            <Button type="button" variant="link" onClick={closeForm}>
-              Cancelar
-            </Button>
-          </div>
-        </form>
-      )}
 
       {menuAccount && (
         <AccountActionsSheet

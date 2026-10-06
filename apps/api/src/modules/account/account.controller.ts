@@ -1,18 +1,12 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common'
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Query } from '@nestjs/common'
 import type { Account } from '@gastos/shared'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { AccountService } from './account.service'
-import { CreateAccountDto } from './dto/create-account.dto'
 import { UpdateAccountDto } from './dto/update-account.dto'
 
 @Controller('accounts')
 export class AccountController {
   constructor(private readonly accounts: AccountService) {}
-
-  @Post()
-  create(@CurrentUser() userId: string, @Body() body: CreateAccountDto): Promise<Account> {
-    return this.accounts.create(userId, body)
-  }
 
   @Get()
   list(@CurrentUser() userId: string, @Query('includeArchived') includeArchived?: string): Promise<Account[]> {

@@ -1,14 +1,12 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import type { AccountType, BankLogo, CreateAccountInput } from '@gastos/shared'
+import { useState } from 'react'
+import type { BankLogo } from '@gastos/shared'
 import { useAccounts } from '@/hooks/queries/use-accounts'
 import { useArchiveAccount } from '@/hooks/queries/use-archive-account'
 import { useArchivedAccounts } from '@/hooks/queries/use-archived-accounts'
 import { useConnectBank } from '@/hooks/queries/use-connect-bank'
-import { useCreateAccount } from '@/hooks/queries/use-create-account'
 import { useRestoreAccount } from '@/hooks/queries/use-restore-account'
 import { useSyncBankConnection } from '@/hooks/queries/use-sync-bank-connection'
 import { useUpdateAccount } from '@/hooks/queries/use-update-account'
@@ -19,15 +17,12 @@ import { ApiClientError } from '@/lib/api-client'
 export function useAccountsPage() {
   const router = useRouter()
   const accounts = useAccounts()
-  const createAccount = useCreateAccount()
   const updateAccount = useUpdateAccount()
   const archiveAccount = useArchiveAccount()
   const archivedAccounts = useArchivedAccounts()
   const restoreAccount = useRestoreAccount()
   const connectBank = useConnectBank()
   const syncBankConnection = useSyncBankConnection()
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [ruleError, setRuleError] = useState<string | null>(null)
   const [connectError, setConnectError] = useState<string | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [pickingLogoForId, setPickingLogoForId] = useState<string | null>(null)
@@ -43,44 +38,6 @@ export function useAccountsPage() {
     dueDay?: string
     general?: string
   }>({})
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    setError,
-    reset,
-    formState: { errors },
-  } = useForm<CreateAccountInput>({ defaultValues: { name: '', type: 'CREDIT_CARD', source: 'MANUAL' } })
-
-  // "Cancelar" não trava enquanto a request está no ar (rede lenta é comum, mobile-first) — esse número
-  // marca qual envio ainda importa. Cancelar incrementa; se a resposta (sucesso ou erro) chegar depois de
-  // outro cancelamento/reabertura, ela é descartada em vez de reaparecer como erro fora de contexto.
-  const submissionRef = useRef(0)
-
-  const onSubmit = handleSubmit(async (values) => {
-    const submission = ++submissionRef.current
-    setRuleError(null)
-    try {
-      await createAccount.mutateAsync(values)
-      if (submission !== submissionRef.current) return
-      reset()
-      setIsFormOpen(false)
-    } catch (error) {
-      if (!(error instanceof ApiClientError)) throw error
-      if (submission !== submissionRef.current) return
-
-      const fieldErrors = error.error.details?.fieldErrors as Record<string, string[] | undefined> | undefined
-      if (fieldErrors) {
-        for (const [field, messages] of Object.entries(fieldErrors)) {
-          if (messages?.[0]) setError(field as keyof CreateAccountInput, { message: messages[0] })
-        }
-      } else {
-        setRuleError(error.error.message)
-      }
-    }
-  })
-
   // Conectar outro banco (InfinitePay, um segundo cartão...) — antes só existia na Home, e só enquanto
   // não houvesse nenhum cartão ainda (ConnectBankCard some depois do primeiro). "Meu Pluggy" aceita várias
   // conexões, então a tela de contas precisa oferecer isso sempre, não só na primeira vez.
@@ -161,22 +118,6 @@ export function useAccountsPage() {
   return {
     accounts: accounts.data ?? [],
     isLoadingAccounts: accounts.isPending,
-    isFormOpen,
-    openForm: () => setIsFormOpen(true),
-    closeForm: () => {
-      submissionRef.current++
-      setIsFormOpen(false)
-      reset()
-      setRuleError(null)
-    },
-    register,
-    errors,
-    type: watch('type'),
-    setType: (value: AccountType) => setValue('type', value),
-    onSubmit,
-    isSubmitting: createAccount.isPending,
-    ruleError,
-    // Fase 4: marca/desmarca qual conta CHECKING alimenta "renda de benefícios" (/settings/income).
     onConnectBank: () => void onConnectBank(),
     isConnectingBank: connectBank.isPending,
     connectError,
