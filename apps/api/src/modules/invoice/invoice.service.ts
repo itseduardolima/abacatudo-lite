@@ -205,7 +205,6 @@ export class InvoiceService {
   // O Pluggy só materializa a fatura depois de um tempo: a última que ele manda pode ser a do ciclo anterior (já
   // paga, vencimento antes do último fechamento). Só vale a fatura que vence depois do fechamento.
   private async closedBillCents(account: AccountWithPluggyItem, since: Date): Promise<number | null> {
-    if (account.closedBillCents !== null) return account.closedBillCents
     if (!account.externalAccountId) return null
     try {
       const bill = await this.pluggy.getLastClosedBill(account.externalAccountId)

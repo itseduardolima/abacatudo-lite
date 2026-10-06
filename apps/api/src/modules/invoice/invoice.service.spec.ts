@@ -41,7 +41,6 @@ function accountRow(overrides: Partial<AccountRow> = {}): AccountWithPluggyItem 
     type: 'CREDIT_CARD',
     source: 'MANUAL',
     closingDay: null,
-    closedBillCents: null,
     dueDay: null,
     creditLimitCents: null,
     bankLogo: null,
@@ -218,15 +217,6 @@ describe('InvoiceService', () => {
       )
       return { service: new InvoiceService(repo, accounts, people, pluggy), repo, pluggy }
     }
-
-    it('total da fatura fechada informado à mão: só a sobra dos pagamentos abate a aberta', async () => {
-      const { service, pluggy } = setup({ closedBillCents: 66397 }, 76709)
-
-      const result = await service.getForAccount('user-1', 'acc-1', monthKey(new Date()))
-
-      expect(result).toMatchObject({ totalCents: 145192, mineCents: 145192, advancePaidCents: 10312 })
-      expect(pluggy.getLastClosedBill).not.toHaveBeenCalled()
-    })
 
     it('sem valor informado, usa o total da última fatura fechada que o Pluggy manda', async () => {
       const { service, pluggy } = setup({}, 76709, 66397)
