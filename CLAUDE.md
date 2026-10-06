@@ -1,4 +1,4 @@
-# gastos-web (AbacaTudo)
+# abacatudo-lite (versão enxuta do AbacaTudo)
 
 > **Leia [`TODO.md`](./TODO.md) antes de qualquer outra coisa.** É o
 > checklist vivo do projeto — o que já está feito e o que falta, por
@@ -140,10 +140,6 @@ docker compose up -d --build    # sobe tudo na VPS
 
 ## Estado atual do projeto
 
-Sprint 0 concluída (exceto o spike do Pluggy, 0.6, que precisa de conta de desenvolvedor). No ar: monorepo
-pnpm + Turborepo, `packages/shared` e `packages/config`, `apps/api` (NestJS: contexto de usuário, `AuthGuard`
-global que falha fechado, `DomainError` + filtro sem vazamento, logger estruturado com redação, validação de
-`.env`, extensão de RLS no Prisma, `/health`), `apps/web` (Next.js + Tailwind com os tokens, `api-client`, CSP
-com nonce, `Button` e `MoneyText` com Cypress), Dockerfiles e stack completa testada (Caddy, web, API,
-Postgres), CI (lint, tipos, testes, build, audit, componentes e build das imagens). Próximo passo: Sprint 1 —
-isolamento por usuário (RLS + teste com 2 usuários) e login. Ver `TODO.md`.
+Clone enxuto do `gastos-web` (AbacaTudo). Fora de escopo aqui, por decisão de produto: extrato/Movimentações
+(só cartão de crédito), conta de benefício, divisão por quinzena (teto só mensal) e total da fatura fechada
+(a fatura é só a aberta). O histórico anterior está no repositório `gastos-web`. Ver `TODO.md`.

@@ -110,7 +110,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             set -e
-            cd "${{ secrets.DEPLOY_PATH || '/root/gastos-web' }}"
+            cd "${{ secrets.DEPLOY_PATH || '/root/abacatudo-lite' }}"
             git fetch origin main
             git checkout main
             git reset --hard origin/main
@@ -126,7 +126,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            cd "${{ secrets.DEPLOY_PATH || '/root/gastos-web' }}"
+            cd "${{ secrets.DEPLOY_PATH || '/root/abacatudo-lite' }}"
             # api não publica porta nenhuma no host — checar de dentro do container é o mesmo que
             # fazíamos manualmente pra validar cada deploy.
             for i in $(seq 1 30); do

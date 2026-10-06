@@ -17,7 +17,7 @@
 #
 # Uso (cron diário, horário de menor movimento):
 #   0 3 * * * BACKUP_AGE_RECIPIENT=age1... BACKUP_S3_BUCKET=... \
-#     /caminho/para/gastos-web/scripts/backup-db.sh
+#     /caminho/para/abacatudo-lite/scripts/backup-db.sh
 #
 # Pré-requisitos na VPS: `aws` CLI e `age` (apt install awscli age). Funciona
 # com S3 de verdade ou qualquer destino S3-compatível via

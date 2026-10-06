@@ -4,7 +4,7 @@
 # compose up --build` manual (ex.: pra pegar variável nova no .env) recria web/api e derruba a
 # conexão com a rede do Caddy compartilhado, mesmo que o deploy automático logo antes tivesse
 # reconectado certinho.
-# Uso na VPS: cd /root/gastos-web && ./scripts/deploy-manual.sh
+# Uso na VPS: cd /root/abacatudo-lite && ./scripts/deploy-manual.sh
 set -e
 cd "$(dirname "$0")/.."
 

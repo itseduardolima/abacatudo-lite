@@ -7,7 +7,7 @@
 # Uso: rodar via cron (o comportamento padrão do cron — enviar por e-mail
 # qualquer stdout/stderr de um job, se o sistema tiver MTA/MAILTO
 # configurado — já vira o alerta, sem precisar de infra extra):
-#   0 * * * * /caminho/para/gastos-web/scripts/disk-space-check.sh
+#   0 * * * * /caminho/para/abacatudo-lite/scripts/disk-space-check.sh
 #
 # Limite customizável: DISK_ALERT_THRESHOLD=90 ./scripts/disk-space-check.sh
 # Caminho(s) customizável(is): ./scripts/disk-space-check.sh /var/lib/docker

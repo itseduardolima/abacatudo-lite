@@ -1,4 +1,4 @@
-# gastos-web (AbacaTudo)
+# abacatudo-lite (AbacaTudo)
 
 Gestão de gastos pessoais (PWA, celular primeiro): cartões e contas via Open
 Finance (Pluggy), separação do que é seu do que é da família, limite mensal

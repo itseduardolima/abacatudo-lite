@@ -2,7 +2,7 @@
 
 ## O que é
 
-**AbacaTudo** (repositório `gastos-web`): sistema web (PWA, uso principal no celular) de gestão de gastos pessoais.
+**AbacaTudo** (repositório `abacatudo-lite`, versão enxuta do `gastos-web`): sistema web (PWA, uso principal no celular) de gestão de gastos pessoais.
 Puxa automaticamente os dados de cartões e contas via Open Finance (agregador
 Pluggy), separa o que é gasto do próprio dono do que é gasto de terceiros
 (família que usa o cartão dele), aplica um limite mensal derivado da renda

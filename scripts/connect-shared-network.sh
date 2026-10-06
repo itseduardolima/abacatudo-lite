@@ -13,7 +13,7 @@
 set -e
 
 SHARED_NETWORK="${SHARED_NETWORK:-pdv-web_default}"
-CONTAINERS="gastos-web-web-1 gastos-web-api-1"
+CONTAINERS="abacatudo-lite-web-1 abacatudo-lite-api-1"
 
 for c in $CONTAINERS; do
   docker network disconnect "$SHARED_NETWORK" "$c" 2>/dev/null || true
