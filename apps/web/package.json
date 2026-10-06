@@ -15,13 +15,13 @@
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
     "@gastos/shared": "workspace:*",
-    "@tanstack/react-query": "^5.90.2",
-    "lucide-react": "^1.47.0",
+    "@tanstack/react-query": "^5.104.1",
+    "lucide-react": "^1.51.0",
     "next": "^15.5.4",
     "qrcode": "^1.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-hook-form": "^7.88.0",
+    "react-hook-form": "^7.89.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
