@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { useBudgetMonth } from '@/hooks/queries/use-budget-month'
 import { useUpdateBudgetMonth } from '@/hooks/queries/use-update-budget-month'
@@ -15,6 +16,7 @@ interface FormValues {
 // fixedExpensesCents/savingsGoalCents do PUT (a API exige os 4 juntos) vão zerados — a
 // lista de gastos fixos nova já não usa mais aquele campo único.
 export function useIncomePage() {
+  const router = useRouter()
   const budgetMonth = useBudgetMonth()
   const updateBudgetMonth = useUpdateBudgetMonth()
   const {
@@ -47,6 +49,7 @@ export function useIncomePage() {
         fixedExpensesCents: 0,
         savingsGoalCents: 0,
       })
+      router.push('/')
     } catch (error) {
       if (!(error instanceof ApiClientError)) throw error
       const fieldErrors = error.error.details?.fieldErrors as Record<string, string[] | undefined> | undefined
