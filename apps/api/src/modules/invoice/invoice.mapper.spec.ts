@@ -1,4 +1,11 @@
-import { computeInvoice, keepNextDueInstallmentOnly, mergeInvoices, type InvoiceRow } from './invoice.mapper'
+import {
+  advancePaidCents,
+  applyAdvancePayment,
+  computeInvoice,
+  keepNextDueInstallmentOnly,
+  mergeInvoices,
+  type InvoiceRow,
+} from './invoice.mapper'
 
 const SELF = 'self-1'
 const FAMILY = 'family-1'
@@ -137,5 +144,27 @@ describe('mergeInvoices', () => {
 
   it('sem faturas, tudo zero', () => {
     expect(mergeInvoices([])).toEqual({ totalCents: 0, mineCents: 0, notMineCents: 0 })
+  })
+})
+
+describe('advancePaidCents', () => {
+  it('o pagamento quita primeiro a fatura fechada; só a sobra abate a aberta (caso real do Nubank)', () => {
+    expect(advancePaidCents(76709, 66397)).toBe(10312)
+  })
+
+  it('pagamento que não passa da fatura fechada não abate a aberta', () => {
+    expect(advancePaidCents(50000, 66397)).toBe(0)
+  })
+
+  it('sem o total da fatura fechada, não abate nada (não dá pra saber o que é adiantamento)', () => {
+    expect(advancePaidCents(76709, null)).toBe(0)
+  })
+})
+
+describe('applyAdvancePayment', () => {
+  it('o abatimento sai do "meu", o "não é meu" fica, e Fatura = Meu + Não é meu continua valendo', () => {
+    const result = applyAdvancePayment({ totalCents: 155504, mineCents: 100000, notMineCents: 55504 }, 10312)
+    expect(result).toEqual({ totalCents: 145192, mineCents: 89688, notMineCents: 55504 })
+    expect(result.mineCents + result.notMineCents).toBe(result.totalCents)
   })
 })

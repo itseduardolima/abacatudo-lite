@@ -85,3 +85,17 @@ export const pluggyTransactionsPageSchema = z.object({
   results: z.array(pluggyTransactionSchema),
   next: z.string().nullable().optional(),
 })
+
+// Última fatura FECHADA (nunca a aberta — o Pluggy só materializa a fatura depois que ela fecha de
+// verdade; confirmado ao vivo contra um Nubank real, comparando com o OFX exportado pelo banco). É o
+// "saldo anterior" que o InvoiceService soma com a movimentação local ainda sem billId.
+export const pluggyBillSchema = z.object({
+  id: z.string(),
+  dueDate: z.string(),
+  totalAmount: z.number().nullable().optional(),
+})
+export type PluggyBill = z.infer<typeof pluggyBillSchema>
+
+export const pluggyBillsPageSchema = z.object({
+  results: z.array(pluggyBillSchema),
+})

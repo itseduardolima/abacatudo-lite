@@ -23,6 +23,7 @@ export const accountSchema = z
     type: accountTypeSchema,
     source: accountSourceSchema,
     closingDay: z.number().int().nullable(),
+    closedBillCents: z.number().int().nullable(),
     dueDay: z.number().int().nullable(),
     creditLimitCents: centsSchema.nullable(),
     // Marca manual do usuário: "renda de benefícios" usa o saldo desta conta em vez do valor digitado
@@ -53,6 +54,7 @@ export const updateAccountInputSchema = z
     bankLogo: bankLogoSchema.nullable().optional(),
     closingDay: dayOfMonthSchema.optional(),
     dueDay: dayOfMonthSchema.optional(),
+    closedBillCents: z.number().int().min(0).nullable().optional(),
   })
   .strict()
 export type UpdateAccountInput = z.infer<typeof updateAccountInputSchema>

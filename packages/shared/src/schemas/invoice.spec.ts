@@ -23,6 +23,7 @@ describe('accountInvoiceSchema', () => {
     mineCents: 60,
     notMineCents: 40,
     estimatedCents: 0,
+    advancePaidCents: 0,
     isForecast: true,
   }
 

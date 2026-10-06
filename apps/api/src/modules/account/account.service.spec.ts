@@ -25,6 +25,7 @@ function row(
     type: 'CREDIT_CARD',
     source: 'MANUAL',
     closingDay: 20,
+    closedBillCents: null,
     dueDay: 27,
     creditLimitCents: 500000,
     bankLogo: null,

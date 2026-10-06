@@ -5,9 +5,11 @@ import { DomainError } from '../../../common/errors/domain.error'
 import {
   pluggyAccountsPageSchema,
   pluggyAuthResponseSchema,
+  pluggyBillsPageSchema,
   pluggyItemSchema,
   pluggyTransactionsPageSchema,
   type PluggyAccount,
+  type PluggyBill,
   type PluggyItem,
   type PluggyTransaction,
 } from './pluggy.schemas'
@@ -87,6 +89,13 @@ export class PluggyClient {
   ): Promise<{ results: PluggyTransaction[]; next: string | null }> {
     const page = await this.request('GET', this.transactionsPath(accountId, cursor), pluggyTransactionsPageSchema)
     return { results: page.results, next: page.next ?? null }
+  }
+
+  // Última fatura fechada (o primeiro resultado é sempre a mais recente já fechada — a aberta nunca
+  // aparece aqui, verificado ao vivo). `null` sem fatura nenhuma fechada ainda (cartão novo).
+  async getLastClosedBill(pluggyAccountId: string): Promise<PluggyBill | null> {
+    const page = await this.request('GET', `/bills?accountId=${pluggyAccountId}`, pluggyBillsPageSchema)
+    return page.results[0] ?? null
   }
 
   // `next` na prática é só a querystring ("?accountId=...&after=..."), não uma URL absoluta — mas trata os

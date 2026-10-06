@@ -116,6 +116,7 @@ function accountRow(overrides: Partial<AccountRow> = {}): AccountWithPluggyItem 
     type: 'CASH',
     source: 'MANUAL',
     closingDay: null,
+    closedBillCents: null,
     dueDay: null,
     creditLimitCents: null,
     bankLogo: null,
