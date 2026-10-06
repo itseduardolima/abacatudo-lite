@@ -33,7 +33,6 @@
      transparente — bug visto ao vivo). */
   --color-on-inverse-muted: rgba(255, 255, 255, 0.72);
   --color-on-inverse-hairline: rgba(255, 255, 255, 0.16);
-  --color-on-inverse-marker: #f5b84b;
   --color-accent-tint-on-inverse: rgba(159, 232, 112, 0.16);
   --color-border: var(--color-pebble);
   --color-border-strong: var(--color-forest-ink);
