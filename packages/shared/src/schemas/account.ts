@@ -29,7 +29,6 @@ export const accountSchema = z
     balanceCents: centsSchema.nullable(),
     // Marca manual do usuário: "renda de benefícios" usa o saldo desta conta em vez do valor digitado
     // à mão (Fase 4). Só uma conta por usuário fica marcada por vez.
-    isBenefitAccount: z.boolean(),
     // Marca manual do usuário — sem escolha, cai no monograma (avatar Fog com iniciais).
     bankLogo: bankLogoSchema.nullable(),
     archivedAt: z.string().datetime().nullable(),
@@ -53,7 +52,6 @@ export const accountNameSchema = z.string().trim().min(1, 'Informe um nome para 
 export const updateAccountInputSchema = z
   .object({
     name: accountNameSchema.optional(),
-    isBenefitAccount: z.boolean().optional(),
     bankLogo: bankLogoSchema.nullable().optional(),
     closingDay: dayOfMonthSchema.optional(),
     dueDay: dayOfMonthSchema.optional(),

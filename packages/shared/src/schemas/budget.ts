@@ -9,7 +9,6 @@ export const budgetMonthSchema = z
   .object({
     month: monthKeySchema,
     incomeCents: centsSchema,
-    benefitCents: centsSchema,
     fixedExpensesCents: centsSchema,
     savingsGoalCents: centsSchema,
     variableCapCents: centsSchema,
@@ -44,7 +43,6 @@ export type BudgetPace = z.infer<typeof budgetPaceSchema>
 export const updateBudgetMonthInputSchema = z
   .object({
     incomeCents: centsSchema.nonnegative(),
-    benefitCents: centsSchema.nonnegative(),
     fixedExpensesCents: centsSchema.nonnegative(),
     savingsGoalCents: centsSchema.nonnegative(),
   })

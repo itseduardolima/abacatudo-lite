@@ -1,5 +1,5 @@
 import type { Account as AccountRow, PluggyItemStatus } from '@prisma/client'
-import { DomainError, NotFoundError } from '../../common/errors/domain.error'
+import { NotFoundError } from '../../common/errors/domain.error'
 import { AccountService } from './account.service'
 import type { AccountRepository, AccountWithPluggyItem } from './account.repository'
 
@@ -9,7 +9,6 @@ function repoMock() {
     findMany: jest.fn(),
     findById: jest.fn(),
     update: jest.fn(),
-    setBenefitAccount: jest.fn(),
     archive: jest.fn(),
     restore: jest.fn(),
   } as unknown as jest.Mocked<AccountRepository>
@@ -29,7 +28,6 @@ function row(
     dueDay: 27,
     creditLimitCents: 500000,
     balanceCents: null,
-    isBenefitAccount: false,
     bankLogo: null,
     pluggyItemId: null,
     externalAccountId: null,
@@ -197,7 +195,6 @@ describe('AccountService', () => {
 
       expect(repo.update).toHaveBeenCalledTimes(1)
       expect(repo.update).toHaveBeenCalledWith('user-1', 'acc-1', { name: 'Cartão principal' })
-      expect(repo.setBenefitAccount).not.toHaveBeenCalled()
     })
 
     it('conta de outro usuário: 404 e nada é gravado', async () => {
@@ -207,65 +204,6 @@ describe('AccountService', () => {
 
       await expect(service.update('user-2', 'acc-do-user-1', { name: 'X' })).rejects.toBeInstanceOf(NotFoundError)
       expect(repo.update).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('update — isBenefitAccount', () => {
-    it('404 quando a conta não existe (ou não é do usuário)', async () => {
-      const repo = repoMock()
-      repo.findById.mockResolvedValue(null)
-      const service = new AccountService(repo)
-
-      await expect(service.update('user-1', 'acc-1', { isBenefitAccount: true })).rejects.toBeInstanceOf(NotFoundError)
-    })
-
-    it('422 quando a conta não é CHECKING', async () => {
-      const repo = repoMock()
-      repo.findById.mockResolvedValue(row({ type: 'CREDIT_CARD' }))
-      const service = new AccountService(repo)
-
-      await expect(service.update('user-1', 'acc-1', { isBenefitAccount: true })).rejects.toBeInstanceOf(DomainError)
-      expect(repo.update).not.toHaveBeenCalled()
-    })
-
-    it('marcar: desmarca qualquer outra conta de benefício antes de marcar esta, num transaction só', async () => {
-      const repo = repoMock()
-      repo.findById
-        .mockResolvedValueOnce(row({ type: 'CHECKING' }))
-        .mockResolvedValueOnce(row({ type: 'CHECKING', isBenefitAccount: true, balanceCents: 15000 }))
-      const service = new AccountService(repo)
-
-      const result = await service.update('user-1', 'acc-1', { isBenefitAccount: true })
-
-      expect(repo.setBenefitAccount).toHaveBeenCalledWith('user-1', 'acc-1')
-      expect(repo.update).not.toHaveBeenCalled()
-      expect(result.isBenefitAccount).toBe(true)
-      expect(result.balanceCents).toBe(15000)
-    })
-
-    it('desmarcar: não mexe nas outras contas, nunca chama o método atômico de marcar', async () => {
-      const repo = repoMock()
-      repo.findById
-        .mockResolvedValueOnce(row({ type: 'CHECKING', isBenefitAccount: true }))
-        .mockResolvedValueOnce(row({ type: 'CHECKING', isBenefitAccount: false }))
-      const service = new AccountService(repo)
-
-      await service.update('user-1', 'acc-1', { isBenefitAccount: false })
-
-      expect(repo.setBenefitAccount).not.toHaveBeenCalled()
-      expect(repo.update).toHaveBeenCalledWith('user-1', 'acc-1', { isBenefitAccount: false })
-    })
-
-    it('nunca marca conta de outro usuário (userId sempre explícito pro repo)', async () => {
-      const repo = repoMock()
-      repo.findById.mockResolvedValue(null)
-      const service = new AccountService(repo)
-
-      await expect(service.update('user-2', 'acc-de-outro-user', { isBenefitAccount: true })).rejects.toBeInstanceOf(
-        NotFoundError,
-      )
-      expect(repo.findById).toHaveBeenCalledWith('user-2', 'acc-de-outro-user')
-      expect(repo.setBenefitAccount).not.toHaveBeenCalled()
     })
   })
 
@@ -329,7 +267,7 @@ describe('AccountService', () => {
       repo.findById.mockResolvedValueOnce(row()).mockResolvedValueOnce(row())
       const service = new AccountService(repo)
 
-      await service.update('user-1', 'acc-1', { isBenefitAccount: false })
+      await service.update('user-1', 'acc-1', { name: 'X' })
 
       expect(repo.update).not.toHaveBeenCalledWith(
         'user-1',

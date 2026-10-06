@@ -9,7 +9,6 @@ function budgetMonthMock(incomeCents: number, month = '2026-09') {
     getOrCreate: jest.fn().mockResolvedValue({
       month,
       incomeCents,
-      benefitCents: 0,
       fixedExpensesCents: 0,
       savingsGoalCents: 0,
       variableCapCents: 0,

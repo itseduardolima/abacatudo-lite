@@ -124,17 +124,3 @@ export function lastClosingCutoff(closingDay: number, now: Date = new Date()): D
 export function nextClosingCutoff(closingDay: number, now: Date = new Date()): Date {
   return lastClosingCutoff(closingDay, new Date(lastClosingCutoff(closingDay, now).getTime() + 32 * 86_400_000))
 }
-
-export const BENEFIT_DEPOSIT_DAY = 30
-
-// Período da conta de benefício: o dinheiro do mês entra no dia 30 do mês anterior, então o "mês" vai do dia 30
-// do anterior (inclusive) até o dia 30 do próprio mês (exclusive). Dia 30 em mês curto cai no último dia.
-export function benefitPeriodRange(monthKeyValue: string): { start: Date; end: Date } {
-  const [year, month] = monthKeyValue.split('-').map(Number) as [number, number]
-  const depositDayIn = (y: number, m: number) => Math.min(BENEFIT_DEPOSIT_DAY, new Date(Date.UTC(y, m, 0)).getUTCDate())
-  const [prevYear, prevMonth] = month === 1 ? [year - 1, 12] : [year, month - 1]
-  return {
-    start: zonedTimeToUtc(prevYear, prevMonth, depositDayIn(prevYear, prevMonth)),
-    end: zonedTimeToUtc(year, month, depositDayIn(year, month)),
-  }
-}

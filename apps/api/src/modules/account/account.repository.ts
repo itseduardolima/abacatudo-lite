@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import type { Account, Prisma, PluggyItemStatus } from '@prisma/client'
-import { PRISMA, setUserInTransaction, type PrismaService } from '../../prisma/prisma.client'
+import { PRISMA, type PrismaService } from '../../prisma/prisma.client'
 
 // "Última atualização" (8.6) e "desconectada" (8.5) vêm do PluggyItem por trás da conta, não de campo
 // próprio — conta manual nunca tem um (fica null pra ela); ver AccountService.toDto.
@@ -48,17 +48,6 @@ export class AccountRepository {
   // Transaction por trás dela — só some das listas/somas (findMany já filtra archivedAt por padrão).
   archive(userId: string, id: string): Promise<Prisma.BatchPayload> {
     return this.prisma.account.updateMany({ where: { userId, id }, data: { archivedAt: new Date() } })
-  }
-
-  // Atômico (Fase 4): desmarcar a conta de benefício anterior e marcar a nova num transaction só — duas
-  // chamadas separadas deixavam uma janela pra duas requisições concorrentes marcarem contas diferentes
-  // ao mesmo tempo, quebrando a invariante de "só uma por vez".
-  async setBenefitAccount(userId: string, id: string): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
-      await setUserInTransaction(tx, userId)
-      await tx.account.updateMany({ where: { userId, isBenefitAccount: true }, data: { isBenefitAccount: false } })
-      await tx.account.updateMany({ where: { userId, id }, data: { isBenefitAccount: true } })
-    })
   }
 
   // Upsert atômico por [userId, externalAccountId] (unique no schema) — sem isso, duas sincronizações

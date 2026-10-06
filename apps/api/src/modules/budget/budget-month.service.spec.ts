@@ -18,7 +18,6 @@ function row(overrides: Partial<BudgetMonthRow> = {}): BudgetMonthRow {
     userId: 'user-1',
     month: '2026-09',
     incomeCents: 500000,
-    benefitCents: 60000,
     fixedExpensesCents: 200000,
     savingsGoalCents: 50000,
     createdAt: new Date('2026-09-01T00:00:00.000Z'),
@@ -44,10 +43,9 @@ describe('BudgetMonthService', () => {
       expect(result).toEqual({
         month: '2026-09',
         incomeCents: 500000,
-        benefitCents: 60000,
         fixedExpensesCents: 200000,
         savingsGoalCents: 50000,
-        variableCapCents: 310000,
+        variableCapCents: 250000,
       })
     })
 
@@ -62,7 +60,6 @@ describe('BudgetMonthService', () => {
 
       expect(repo.createIfMissing).toHaveBeenCalledWith('user-1', '2026-09', {
         incomeCents: 500000,
-        benefitCents: 60000,
         fixedExpensesCents: 200000,
         savingsGoalCents: 50000,
       })
@@ -105,7 +102,6 @@ describe('BudgetMonthService', () => {
       expect(result).toEqual({
         month: '2026-12',
         incomeCents: 0,
-        benefitCents: 0,
         fixedExpensesCents: 0,
         savingsGoalCents: 0,
         variableCapCents: 0,
@@ -123,7 +119,6 @@ describe('BudgetMonthService', () => {
       expect(result).toEqual({
         month: '2026-01',
         incomeCents: 0,
-        benefitCents: 0,
         fixedExpensesCents: 0,
         savingsGoalCents: 0,
         variableCapCents: 0,
@@ -149,14 +144,12 @@ describe('BudgetMonthService', () => {
 
       await service.update('user-1', '2026-09', {
         incomeCents: 565145,
-        benefitCents: 60000,
         fixedExpensesCents: 200000,
         savingsGoalCents: 50000,
       })
 
       expect(repo.upsert).toHaveBeenCalledWith('user-1', '2026-09', {
         incomeCents: 565145,
-        benefitCents: 60000,
         fixedExpensesCents: 200000,
         savingsGoalCents: 50000,
       })
@@ -169,7 +162,6 @@ describe('BudgetMonthService', () => {
       await expect(
         service.update('user-1', '2026-08', {
           incomeCents: 0,
-          benefitCents: 0,
           fixedExpensesCents: 0,
           savingsGoalCents: 0,
         }),

@@ -4,7 +4,6 @@ import { PRISMA, type PrismaService } from '../../prisma/prisma.client'
 
 export interface BudgetMonthValues {
   incomeCents: number
-  benefitCents: number
   fixedExpensesCents: number
   savingsGoalCents: number
 }

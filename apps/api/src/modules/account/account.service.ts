@@ -32,7 +32,7 @@ export class AccountService {
     return toDto(row)
   }
 
-  // PATCH único pros campos editáveis (nome, benefício, logo do banco, fechamento e vencimento) — só mexe no que veio no body, nunca
+  // PATCH único pros campos editáveis (nome, logo do banco, fechamento e vencimento) — só mexe no que veio no body, nunca
   // sobrescreve o outro campo com o valor atual (teria corrida se dois PATCH parciais chegassem juntos).
   async update(userId: string, id: string, input: UpdateAccountInput): Promise<Account> {
     const existing = await this.repo.findById(userId, id)
@@ -40,14 +40,6 @@ export class AccountService {
 
     if (input.name !== undefined) {
       await this.repo.update(userId, id, { name: input.name })
-    }
-
-    if (input.isBenefitAccount !== undefined) {
-      if (input.isBenefitAccount && existing.type !== 'CHECKING') {
-        throw new DomainError('NOT_A_CHECKING_ACCOUNT', 'Só uma conta corrente pode ser a conta de benefício.', 422)
-      }
-      if (input.isBenefitAccount) await this.repo.setBenefitAccount(userId, id)
-      else await this.repo.update(userId, id, { isBenefitAccount: false })
     }
 
     if (input.bankLogo !== undefined) {
@@ -99,7 +91,6 @@ function toDto(row: AccountWithPluggyItem): Account {
     dueDay: row.dueDay,
     creditLimitCents: row.creditLimitCents,
     balanceCents: row.balanceCents,
-    isBenefitAccount: row.isBenefitAccount,
     bankLogo: row.bankLogo as Account['bankLogo'],
     archivedAt: row.archivedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),

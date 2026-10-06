@@ -180,9 +180,6 @@ model Account {
   // Saldo sincronizado pelo Pluggy (Fase 4) — só populado em CHECKING via runSync; conta MANUAL/IMPORT
   // nunca tem saldo de verdade, fica null.
   balanceCents      Int?
-  // Marca manual do usuário (tela de contas), nunca por heurística de nome de banco — TODO.md/Fase 4: só
-  // uma conta por vez pode ser a "conta de benefício" (AccountService garante isso).
-  isBenefitAccount  Boolean       @default(false)
   // Marca manual do usuário (DESIGN_SYSTEM § Logos de bancos): qual logo mostrar, entre os 3 servidos
   // localmente em brand/bancos/ (validado pelo schema Zod, nunca string livre). Sem logo escolhido,
   // conta usa monograma (avatar Fog com iniciais).
@@ -376,15 +373,14 @@ model Split {
 }
 
 /// RLS por userId. Configuração do orçamento por mês (03-regras-negocio § Orçamento mensal) — renda,
-/// benefício, gastos fixos e meta de poupança são sempre informados pelo User, nunca detectados (Pix está
-/// fora da gestão). teto variável = income + benefit − fixedExpenses − savingsGoal, calculado, não
+/// gastos fixos e meta de poupança são sempre informados pelo User, nunca detectados (Pix está
+/// fora da gestão). teto variável = income − fixedExpenses − savingsGoal, calculado, não
 /// guardado. Mês fechado (no passado) é imutável — a API rejeita update.
 model BudgetMonth {
   id                 String   @id @default(uuid())
   userId             String
   month              String
   incomeCents        Int      @default(0)
-  benefitCents       Int      @default(0)
   fixedExpensesCents Int      @default(0)
   savingsGoalCents   Int      @default(0)
   createdAt          DateTime @default(now())

@@ -9,7 +9,6 @@ import { toBudgetMonthDto } from './budget.mapper'
 const MONTH_KEY_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/
 const ZERO = {
   incomeCents: 0,
-  benefitCents: 0,
   fixedExpensesCents: 0,
   savingsGoalCents: 0,
 }
@@ -51,7 +50,6 @@ export class BudgetMonthService {
     const previous = await this.repo.findMostRecentBefore(userId, key)
     return this.repo.createIfMissing(userId, key, {
       incomeCents: previous?.incomeCents ?? 0,
-      benefitCents: previous?.benefitCents ?? 0,
       fixedExpensesCents: previous?.fixedExpensesCents ?? 0,
       savingsGoalCents: previous?.savingsGoalCents ?? 0,
     })

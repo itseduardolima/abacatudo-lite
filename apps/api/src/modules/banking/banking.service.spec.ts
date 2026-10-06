@@ -116,7 +116,6 @@ function accountRow(overrides: Partial<AccountRow> = {}): AccountRow {
     dueDay: 27,
     creditLimitCents: 500000,
     balanceCents: null,
-    isBenefitAccount: false,
     bankLogo: null,
     pluggyItemId: 'item-1',
     externalAccountId: 'ext-acc-1',

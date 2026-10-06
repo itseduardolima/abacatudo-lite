@@ -1,12 +1,4 @@
-import {
-  benefitPeriodRange,
-  lastClosingCutoff,
-  dateKey,
-  dayFromDateString,
-  monthKey,
-  monthRange,
-  shiftMonthKey,
-} from './timezone'
+import { lastClosingCutoff, dateKey, dayFromDateString, monthKey, monthRange, shiftMonthKey } from './timezone'
 
 describe('monthKey / dateKey', () => {
   it('compra às 23h30 do dia 31 (horário de Manaus) não cai no mês seguinte por fuso', () => {
@@ -109,18 +101,5 @@ describe('lastClosingCutoff', () => {
   it('em janeiro, volta pra dezembro; dia 31 em mês curto cai no último dia', () => {
     expect(lastClosingCutoff(20, new Date('2026-01-05T15:00:00.000Z')).toISOString()).toBe('2025-12-20T03:00:00.000Z')
     expect(lastClosingCutoff(31, new Date('2026-03-01T15:00:00.000Z')).toISOString()).toBe('2026-02-28T03:00:00.000Z')
-  })
-})
-
-describe('benefitPeriodRange', () => {
-  it('outubro vai de 30/09 (inclusive) a 30/10 (exclusive), em Manaus', () => {
-    const { start, end } = benefitPeriodRange('2026-10')
-    expect(start.toISOString()).toBe('2026-09-30T04:00:00.000Z')
-    expect(end.toISOString()).toBe('2026-10-30T04:00:00.000Z')
-  })
-
-  it('janeiro começa em 30/12; março começa no último dia de fevereiro', () => {
-    expect(benefitPeriodRange('2026-01').start.toISOString()).toBe('2025-12-30T04:00:00.000Z')
-    expect(benefitPeriodRange('2026-03').start.toISOString()).toBe('2026-02-28T04:00:00.000Z')
   })
 })
