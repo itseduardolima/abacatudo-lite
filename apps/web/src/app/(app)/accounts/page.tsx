@@ -48,6 +48,8 @@ export default function AccountsPage() {
     billingId,
     closingDayDraft,
     dueDayDraft,
+    closedBillDraft,
+    setClosedBillDraft,
     setClosingDayDraft,
     setDueDayDraft,
     billingErrors,
@@ -270,7 +272,7 @@ export default function AccountsPage() {
           }}
           onBilling={() => {
             closeMenu()
-            openBilling(menuAccount.id, menuAccount.closingDay, menuAccount.dueDay)
+            openBilling(menuAccount.id, menuAccount.closingDay, menuAccount.dueDay, menuAccount.closedBillCents)
           }}
           onRemove={() => {
             closeMenu()
@@ -285,6 +287,8 @@ export default function AccountsPage() {
           accountName={accounts.find((account) => account.id === billingId)?.name ?? ''}
           closingDay={closingDayDraft}
           dueDay={dueDayDraft}
+          closedBill={closedBillDraft}
+          onChangeClosedBill={setClosedBillDraft}
           onChangeClosingDay={setClosingDayDraft}
           onChangeDueDay={setDueDayDraft}
           onSave={onSaveBilling}

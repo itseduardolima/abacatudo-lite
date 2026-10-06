@@ -13,6 +13,7 @@ import { useRestoreAccount } from '@/hooks/queries/use-restore-account'
 import { useSyncBankConnection } from '@/hooks/queries/use-sync-bank-connection'
 import { useUpdateAccount } from '@/hooks/queries/use-update-account'
 import { ApiClientError } from '@/lib/api-client'
+import { formatMoney, parseMoneyInput } from '@/lib/utils/format-money'
 
 // Hook de página: só orquestração (04-padroes-codigo). Campos de cartão (fechamento, vencimento, limite)
 // ficam pra uma próxima etapa — aqui só nome e tipo, o mínimo pra existir a conta.
@@ -38,9 +39,11 @@ export function useAccountsPage() {
   const [billingId, setBillingId] = useState<string | null>(null)
   const [closingDayDraft, setClosingDayDraft] = useState('')
   const [dueDayDraft, setDueDayDraft] = useState('')
+  const [closedBillDraft, setClosedBillDraft] = useState('')
   const [billingErrors, setBillingErrors] = useState<{
     closingDay?: string
     dueDay?: string
+    closedBill?: string
     general?: string
   }>({})
   const {
@@ -143,6 +146,7 @@ export function useAccountsPage() {
     const input = {
       ...(closingDayDraft.trim() ? { closingDay: Number(closingDayDraft) } : {}),
       ...(dueDayDraft.trim() ? { dueDay: Number(dueDayDraft) } : {}),
+      closedBillCents: closedBillDraft.trim() ? parseMoneyInput(closedBillDraft) : null,
     }
     try {
       await updateAccount.mutateAsync({ id: billingId, input })
@@ -153,7 +157,11 @@ export function useAccountsPage() {
       setBillingErrors({
         closingDay: fieldErrors?.closingDay?.[0],
         dueDay: fieldErrors?.dueDay?.[0],
-        general: fieldErrors?.closingDay || fieldErrors?.dueDay ? undefined : error.error.message,
+        closedBill: fieldErrors?.closedBillCents?.[0],
+        general:
+          fieldErrors?.closingDay || fieldErrors?.dueDay || fieldErrors?.closedBillCents
+            ? undefined
+            : error.error.message,
       })
     }
   }
@@ -203,13 +211,16 @@ export function useAccountsPage() {
     billingId,
     closingDayDraft,
     dueDayDraft,
+    closedBillDraft,
+    setClosedBillDraft,
     setClosingDayDraft,
     setDueDayDraft,
     billingErrors,
-    openBilling: (id: string, closingDay: number | null, dueDay: number | null) => {
+    openBilling: (id: string, closingDay: number | null, dueDay: number | null, closedBillCents: number | null) => {
       setBillingId(id)
       setClosingDayDraft(closingDay ? String(closingDay) : '')
       setDueDayDraft(dueDay ? String(dueDay) : '')
+      setClosedBillDraft(closedBillCents !== null ? formatMoney(closedBillCents).replace('R$ ', '') : '')
       setBillingErrors({})
     },
     closeBilling,
