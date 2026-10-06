@@ -137,11 +137,7 @@ Detalhe e números em [07-integracao-bancaria](./07-integracao-bancaria.md) § F
 - **Parcelas futuras**: transação com `date` depois de hoje é **parcela futura** (vem `PENDING`): fica fora do
   mês corrente e dos totais, e só aparece em "parcelas futuras" e na **fatura prevista** (ver "Fatura prevista").
 - **Fatura**: agrupa por `billId`; as pendentes (sem `billId`) pertencem à fatura aberta. A fatura já fechada
-  **não entra** em "Meu em [mês]", no ritmo nem no total do cartão. **O total é o quanto falta pagar**, como no app do banco: o pagamento de
-  fatura (`CARD_PAYMENT`) quita primeiro a fatura fechada, e só a **sobra** (pagamentos desde o último
-  fechamento − total da fatura fechada, se positiva) abate a aberta, no "Meu" (o "Não é meu" não muda). O total da
-  fatura fechada vem do valor informado em Contas ou, na falta dele, da última fatura fechada que o Pluggy manda;
-  sem nenhum dos dois, não abate nada. Vale na Início e na tela da fatura, em todos os cartões. Cartão
+  **não entra** em "Meu em [mês]", no ritmo nem no total do cartão. O pagamento de fatura (`CARD_PAYMENT`) não abate a aberta: a fatura aberta é só a soma dos lançamentos abertos. Cartão
   com `closingDay` (ex.: Pic Pay, que o Pluggy não manda fatura): só lançamento a partir do último fechamento é
   fatura aberta. O próprio dia de fechamento já conta, à meia-noite de Brasília (como no Nubank); parcela vale
   pela data de vencimento, não pela da compra. O dia é fixo: o banco antecipa o fechamento em fim de semana e
