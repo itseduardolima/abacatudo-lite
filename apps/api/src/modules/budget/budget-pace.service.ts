@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import type { BudgetPace } from '@gastos/shared'
-import { dayOfMonth, halfMonthRange, monthKey } from '../../common/date/timezone'
+import { dayOfMonth, monthKey } from '../../common/date/timezone'
 import { FixedExpenseService } from '../fixed-expense/fixed-expense.service'
 import { InvoiceService } from '../invoice/invoice.service'
 import { BudgetMonthService } from './budget-month.service'
@@ -25,7 +25,7 @@ export class BudgetPaceService {
       this.fixedExpenses.sumActiveCents(userId),
     ])
 
-    const pace = computePace({
+    return computePace({
       monthKeyValue: budget.month,
       currentMonthKey: monthKey(new Date()),
       todayDayOfMonth: dayOfMonth(new Date()),
@@ -33,30 +33,5 @@ export class BudgetPaceService {
       spentCents: invoice.mineCents + fixedExpensesCents,
       cardsMineCents: invoice.mineCents,
     })
-    const isCurrentMonth = budget.month === monthKey(new Date())
-    const currentHalf = dayOfMonth(new Date()) <= 15 ? 1 : 2
-    const [firstHalfSpentCents, currentHalfSpentCents] = isCurrentMonth
-      ? await Promise.all([
-          this.halfSpentCents(userId, budget.month, 1),
-          currentHalf === 1 ? undefined : this.halfSpentCents(userId, budget.month, 2),
-        ])
-      : [null, undefined]
-    const currentHalfCapCents = currentHalf === 1 ? budget.firstHalfIncomeCents : budget.secondHalfIncomeCents
-    const currentHalfSpent = currentHalf === 1 ? firstHalfSpentCents : (currentHalfSpentCents ?? null)
-    return {
-      ...pace,
-      firstHalfCapCents: budget.firstHalfIncomeCents,
-      firstHalfSpentCents,
-      currentHalf: isCurrentMonth ? (currentHalf as 1 | 2) : null,
-      currentHalfRemainingCents: currentHalfSpent === null ? null : currentHalfCapCents - currentHalfSpent,
-    }
-  }
-
-  private async halfSpentCents(userId: string, month: string, half: 1 | 2): Promise<number> {
-    const [cardsCents, fixedCents] = await Promise.all([
-      this.invoices.getHalfMineCents(userId, halfMonthRange(month, half)),
-      this.fixedExpenses.sumActiveCentsByHalf(userId, half),
-    ])
-    return cardsCents + fixedCents
   }
 }

@@ -137,27 +137,6 @@ export class InvoiceService {
     return mergeInvoices(invoices)
   }
 
-  async getHalfMineCents(userId: string, range: { start: Date; end: Date }): Promise<number> {
-    const selfId = await this.selfPersonId(userId)
-    const cards = (await this.accounts.findMany(userId, false)).filter((a) => a.type === 'CREDIT_CARD')
-    const perCard = await Promise.all(
-      cards.map(async (account) => {
-        if (account.source !== 'PLUGGY') {
-          return computeInvoice(await this.repo.findRows(userId, range, account.id), selfId).mineCents
-        }
-        const [rows, sources] = await Promise.all([
-          this.repo.findOpenRowsInRange(userId, account.id, range, openAfter(account)),
-          this.repo.findInstallmentSources(userId, account.id),
-        ])
-        const estimated = estimateInstallments(sources)
-          .filter((item) => item.dueAt >= range.start && item.dueAt < range.end)
-          .map(toInvoiceRow)
-        return computeInvoice([...rows, ...estimated], selfId).mineCents
-      }),
-    )
-    return perCard.reduce((sum, cents) => sum + cents, 0)
-  }
-
   // PLUGGY: fatura aberta = lançamentos sem billId (e, com closingDay, só depois do último fechamento),
   // só a parcela da vez em compra parcelada. Fatura já fechada não entra. MANUAL/IMPORT: mês calendário.
   private isForecastFor(account: AccountWithPluggyItem, month?: string): boolean {

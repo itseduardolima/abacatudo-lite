@@ -19,7 +19,6 @@ function row(overrides: Partial<FixedExpenseRow> = {}): FixedExpenseRow {
     userId: 'user-1',
     name: 'Aluguel',
     amountCents: 120000,
-    half: 1,
     archivedAt: null,
     createdAt: new Date('2026-09-01T00:00:00.000Z'),
     updatedAt: new Date('2026-09-01T00:00:00.000Z'),
@@ -33,15 +32,14 @@ describe('FixedExpenseService', () => {
     repo.create.mockResolvedValue(row())
     const service = new FixedExpenseService(repo)
 
-    await expect(service.create('user-1', { name: 'Aluguel', amountCents: 120000, half: 2 })).resolves.toEqual({
+    await expect(service.create('user-1', { name: 'Aluguel', amountCents: 120000 })).resolves.toEqual({
       id: 'fe-1',
       name: 'Aluguel',
       amountCents: 120000,
-      half: 1,
       archivedAt: null,
       createdAt: '2026-09-01T00:00:00.000Z',
     })
-    expect(repo.create).toHaveBeenCalledWith('user-1', 'Aluguel', 120000, 2)
+    expect(repo.create).toHaveBeenCalledWith('user-1', 'Aluguel', 120000)
   })
 
   it('list: mapeia todas as linhas', async () => {
@@ -88,16 +86,16 @@ describe('FixedExpenseService', () => {
     await expect(service.archive('user-1', 'fe-1')).resolves.toBeUndefined()
   })
 
-  it('update: grava nome, valor e quinzena e devolve o DTO', async () => {
+  it('update: grava nome, valor e devolve o DTO', async () => {
     const repo = repoMock()
     repo.update.mockResolvedValue({ count: 1 })
-    repo.findById.mockResolvedValue(row({ half: 2, amountCents: 130000 }))
+    repo.findById.mockResolvedValue(row({ amountCents: 130000 }))
     const service = new FixedExpenseService(repo)
 
-    const result = await service.update('user-1', 'fe-1', { name: 'Aluguel', amountCents: 130000, half: 2 })
+    const result = await service.update('user-1', 'fe-1', { name: 'Aluguel', amountCents: 130000 })
 
-    expect(repo.update).toHaveBeenCalledWith('user-1', 'fe-1', { name: 'Aluguel', amountCents: 130000, half: 2 })
-    expect(result).toMatchObject({ id: 'fe-1', half: 2, amountCents: 130000 })
+    expect(repo.update).toHaveBeenCalledWith('user-1', 'fe-1', { name: 'Aluguel', amountCents: 130000 })
+    expect(result).toMatchObject({ id: 'fe-1', amountCents: 130000 })
   })
 
   it('update: gasto de outro usuário ou inexistente é 404 e nada é lido', async () => {
@@ -105,22 +103,9 @@ describe('FixedExpenseService', () => {
     repo.update.mockResolvedValue({ count: 0 })
     const service = new FixedExpenseService(repo)
 
-    await expect(service.update('user-2', 'fe-1', { name: 'Aluguel', amountCents: 1, half: 1 })).rejects.toBeInstanceOf(
+    await expect(service.update('user-2', 'fe-1', { name: 'Aluguel', amountCents: 1 })).rejects.toBeInstanceOf(
       NotFoundError,
     )
     expect(repo.findById).not.toHaveBeenCalled()
-  })
-
-  it('sumActiveCentsByHalf: gasto dividido (3) conta metade em cada quinzena, o centavo ímpar na 2ª', async () => {
-    const repo = repoMock()
-    repo.findMany.mockResolvedValue([
-      row({ amountCents: 10001, half: 3 }),
-      row({ id: 'fe-2', amountCents: 5000, half: 1 }),
-      row({ id: 'fe-3', amountCents: 7000, half: 2 }),
-    ])
-    const service = new FixedExpenseService(repo)
-
-    await expect(service.sumActiveCentsByHalf('user-1', 1)).resolves.toBe(5000 + 5000)
-    await expect(service.sumActiveCentsByHalf('user-1', 2)).resolves.toBe(5001 + 7000)
   })
 })

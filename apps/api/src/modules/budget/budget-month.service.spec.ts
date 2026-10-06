@@ -18,7 +18,6 @@ function row(overrides: Partial<BudgetMonthRow> = {}): BudgetMonthRow {
     userId: 'user-1',
     month: '2026-09',
     incomeCents: 500000,
-    firstHalfIncomeCents: 250000,
     benefitCents: 60000,
     fixedExpensesCents: 200000,
     savingsGoalCents: 50000,
@@ -45,8 +44,6 @@ describe('BudgetMonthService', () => {
       expect(result).toEqual({
         month: '2026-09',
         incomeCents: 500000,
-        firstHalfIncomeCents: 250000,
-        secondHalfIncomeCents: 250000,
         benefitCents: 60000,
         fixedExpensesCents: 200000,
         savingsGoalCents: 50000,
@@ -65,7 +62,6 @@ describe('BudgetMonthService', () => {
 
       expect(repo.createIfMissing).toHaveBeenCalledWith('user-1', '2026-09', {
         incomeCents: 500000,
-        firstHalfIncomeCents: 250000,
         benefitCents: 60000,
         fixedExpensesCents: 200000,
         savingsGoalCents: 50000,
@@ -109,8 +105,6 @@ describe('BudgetMonthService', () => {
       expect(result).toEqual({
         month: '2026-12',
         incomeCents: 0,
-        firstHalfIncomeCents: 0,
-        secondHalfIncomeCents: 0,
         benefitCents: 0,
         fixedExpensesCents: 0,
         savingsGoalCents: 0,
@@ -129,8 +123,6 @@ describe('BudgetMonthService', () => {
       expect(result).toEqual({
         month: '2026-01',
         incomeCents: 0,
-        firstHalfIncomeCents: 0,
-        secondHalfIncomeCents: 0,
         benefitCents: 0,
         fixedExpensesCents: 0,
         savingsGoalCents: 0,
@@ -156,8 +148,7 @@ describe('BudgetMonthService', () => {
       const service = new BudgetMonthService(repo)
 
       await service.update('user-1', '2026-09', {
-        firstHalfIncomeCents: 283800,
-        secondHalfIncomeCents: 281345,
+        incomeCents: 565145,
         benefitCents: 60000,
         fixedExpensesCents: 200000,
         savingsGoalCents: 50000,
@@ -165,7 +156,6 @@ describe('BudgetMonthService', () => {
 
       expect(repo.upsert).toHaveBeenCalledWith('user-1', '2026-09', {
         incomeCents: 565145,
-        firstHalfIncomeCents: 283800,
         benefitCents: 60000,
         fixedExpensesCents: 200000,
         savingsGoalCents: 50000,
@@ -178,8 +168,7 @@ describe('BudgetMonthService', () => {
 
       await expect(
         service.update('user-1', '2026-08', {
-          firstHalfIncomeCents: 0,
-          secondHalfIncomeCents: 0,
+          incomeCents: 0,
           benefitCents: 0,
           fixedExpensesCents: 0,
           savingsGoalCents: 0,

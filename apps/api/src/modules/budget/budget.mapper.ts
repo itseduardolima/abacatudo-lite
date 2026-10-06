@@ -16,8 +16,6 @@ export function toBudgetMonthDto(row: BudgetMonthRow): BudgetMonth {
   return {
     month: row.month,
     incomeCents: row.incomeCents,
-    firstHalfIncomeCents: row.firstHalfIncomeCents,
-    secondHalfIncomeCents: Math.max(row.incomeCents - row.firstHalfIncomeCents, 0),
     benefitCents: row.benefitCents,
     fixedExpensesCents: row.fixedExpensesCents,
     savingsGoalCents: row.savingsGoalCents,

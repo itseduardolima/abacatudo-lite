@@ -9,8 +9,6 @@ import { toBudgetMonthDto } from './budget.mapper'
 const MONTH_KEY_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/
 const ZERO = {
   incomeCents: 0,
-  firstHalfIncomeCents: 0,
-  secondHalfIncomeCents: 0,
   benefitCents: 0,
   fixedExpensesCents: 0,
   savingsGoalCents: 0,
@@ -41,12 +39,7 @@ export class BudgetMonthService {
   async update(userId: string, month: string | undefined, input: UpdateBudgetMonthInput): Promise<BudgetMonth> {
     const key = resolveKey(month)
     assertMonthOpen(key)
-    const { firstHalfIncomeCents, secondHalfIncomeCents, ...rest } = input
-    const row = await this.repo.upsert(userId, key, {
-      ...rest,
-      firstHalfIncomeCents,
-      incomeCents: firstHalfIncomeCents + secondHalfIncomeCents,
-    })
+    const row = await this.repo.upsert(userId, key, input)
     return toBudgetMonthDto(row)
   }
 
@@ -58,7 +51,6 @@ export class BudgetMonthService {
     const previous = await this.repo.findMostRecentBefore(userId, key)
     return this.repo.createIfMissing(userId, key, {
       incomeCents: previous?.incomeCents ?? 0,
-      firstHalfIncomeCents: previous?.firstHalfIncomeCents ?? 0,
       benefitCents: previous?.benefitCents ?? 0,
       fixedExpensesCents: previous?.fixedExpensesCents ?? 0,
       savingsGoalCents: previous?.savingsGoalCents ?? 0,

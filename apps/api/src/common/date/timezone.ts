@@ -125,14 +125,6 @@ export function nextClosingCutoff(closingDay: number, now: Date = new Date()): D
   return lastClosingCutoff(closingDay, new Date(lastClosingCutoff(closingDay, now).getTime() + 32 * 86_400_000))
 }
 
-// Quinzena do mês: 1ª = dia 1–15, 2ª = dia 16 até o fim (fim exclusivo, America/Manaus).
-export function halfMonthRange(monthKeyValue: string, half: 1 | 2): { start: Date; end: Date } {
-  const { start, end } = monthRange(monthKeyValue)
-  const [year, month] = monthKeyValue.split('-').map(Number) as [number, number]
-  const middle = zonedTimeToUtc(year, month, 16)
-  return half === 1 ? { start, end: middle } : { start: middle, end }
-}
-
 export const BENEFIT_DEPOSIT_DAY = 30
 
 // Período da conta de benefício: o dinheiro do mês entra no dia 30 do mês anterior, então o "mês" vai do dia 30

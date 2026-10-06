@@ -9,8 +9,6 @@ export const budgetMonthSchema = z
   .object({
     month: monthKeySchema,
     incomeCents: centsSchema,
-    firstHalfIncomeCents: centsSchema,
-    secondHalfIncomeCents: centsSchema,
     benefitCents: centsSchema,
     fixedExpensesCents: centsSchema,
     savingsGoalCents: centsSchema,
@@ -39,18 +37,13 @@ export const budgetPaceSchema = z
     diffCents: centsSchema,
     status: budgetPaceStatusSchema,
     perDayRemainingCents: centsSchema,
-    firstHalfCapCents: centsSchema,
-    firstHalfSpentCents: centsSchema.nullable(),
-    currentHalf: z.union([z.literal(1), z.literal(2)]).nullable(),
-    currentHalfRemainingCents: centsSchema.nullable(),
   })
   .strict()
 export type BudgetPace = z.infer<typeof budgetPaceSchema>
 
 export const updateBudgetMonthInputSchema = z
   .object({
-    firstHalfIncomeCents: centsSchema.nonnegative(),
-    secondHalfIncomeCents: centsSchema.nonnegative(),
+    incomeCents: centsSchema.nonnegative(),
     benefitCents: centsSchema.nonnegative(),
     fixedExpensesCents: centsSchema.nonnegative(),
     savingsGoalCents: centsSchema.nonnegative(),

@@ -5,8 +5,6 @@ describe('budgetMonthSchema', () => {
     const result = budgetMonthSchema.safeParse({
       month: '2026-09',
       incomeCents: 500000,
-      firstHalfIncomeCents: 250000,
-      secondHalfIncomeCents: 250000,
       benefitCents: 60000,
       fixedExpensesCents: 200000,
       savingsGoalCents: 50000,
