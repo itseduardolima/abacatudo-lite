@@ -54,14 +54,13 @@ export class AccountService {
       await this.repo.update(userId, id, { bankLogo: input.bankLogo })
     }
 
-    if (input.closingDay !== undefined || input.dueDay !== undefined || input.closedBillCents !== undefined) {
+    if (input.closingDay !== undefined || input.dueDay !== undefined) {
       if (existing.type !== 'CREDIT_CARD') {
         throw new DomainError('NOT_A_CREDIT_CARD', 'Fechamento e vencimento só existem em cartão de crédito.', 422)
       }
       await this.repo.update(userId, id, {
         ...(input.closingDay !== undefined ? { closingDay: input.closingDay } : {}),
         ...(input.dueDay !== undefined ? { dueDay: input.dueDay } : {}),
-        ...(input.closedBillCents !== undefined ? { closedBillCents: input.closedBillCents } : {}),
       })
     }
 
@@ -97,7 +96,6 @@ function toDto(row: AccountWithPluggyItem): Account {
     type: row.type,
     source: row.source,
     closingDay: row.closingDay,
-    closedBillCents: row.closedBillCents,
     dueDay: row.dueDay,
     creditLimitCents: row.creditLimitCents,
     balanceCents: row.balanceCents,

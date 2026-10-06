@@ -51,20 +51,6 @@ export class InvoiceRepository {
     return rows.map((row) => toInvoiceRow(row, installmentOf(row)))
   }
 
-  async sumPaymentsSince(userId: string, accountId: string, since: Date): Promise<number> {
-    const result = await this.prisma.transaction.aggregate({
-      where: {
-        userId,
-        accountId,
-        kind: 'CARD_PAYMENT',
-        occurredAt: { gte: since },
-        account: { type: 'CREDIT_CARD', source: 'PLUGGY' },
-      },
-      _sum: { amountCents: true },
-    })
-    return result._sum.amountCents ?? 0
-  }
-
   // Quinzena (03-regras-negocio § Orçamento mensal): lançamento sem billId de cartão PLUGGY cuja data
   // (a do vencimento, se parcela) cai na janela. `after` corta a fatura já fechada, como em findOpenRows.
   async findOpenRowsInRange(

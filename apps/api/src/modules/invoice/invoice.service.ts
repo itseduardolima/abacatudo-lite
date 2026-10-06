@@ -1,31 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
 import type { AccountInvoice, EstimatedInstallmentsResponse, Invoice, StatementsResponse } from '@gastos/shared'
 import { lastClosingCutoff, monthKey, nextClosingCutoff, resolveMonthRange } from '../../common/date/timezone'
 import { DomainError, NotFoundError } from '../../common/errors/domain.error'
 import { AccountRepository, type AccountWithPluggyItem } from '../account/account.repository'
-import { PluggyClient } from '../banking/pluggy/pluggy.client'
 import { PersonRepository } from '../person/person.repository'
-import {
-  advancePaidCents,
-  applyAdvancePayment,
-  computeInvoice,
-  keepNextDueInstallmentOnly,
-  mergeInvoices,
-  type InvoiceRow,
-} from './invoice.mapper'
+import { computeInvoice, keepNextDueInstallmentOnly, mergeInvoices, type InvoiceRow } from './invoice.mapper'
 import { estimateInstallments, type InstallmentSource } from './installment-forecast.mapper'
 import { InvoiceRepository } from './invoice.repository'
 import { buildPersonStatements, formatStatementText, type StatementRow } from './statement.mapper'
 
 @Injectable()
 export class InvoiceService {
-  private readonly logger = new Logger(InvoiceService.name)
-
   constructor(
     private readonly repo: InvoiceRepository,
     private readonly accounts: AccountRepository,
     private readonly people: PersonRepository,
-    private readonly pluggy: PluggyClient,
   ) {}
 
   async getForAccount(userId: string, accountId: string | undefined, month?: string): Promise<AccountInvoice> {
@@ -179,7 +168,7 @@ export class InvoiceService {
     account: AccountWithPluggyItem,
     selfPersonId: string,
     month?: string,
-  ): Promise<Invoice & { estimatedCents: number; advancePaidCents: number }> {
+  ): Promise<Invoice & { estimatedCents: number }> {
     if (this.isForecastFor(account, month)) {
       const range = resolveMonthRange(month as string)
       const [real, estimated] = await Promise.all([
@@ -190,13 +179,12 @@ export class InvoiceService {
       return {
         ...computeInvoice([...real, ...estimatedRows], selfPersonId),
         estimatedCents: computeInvoice(estimatedRows, selfPersonId).totalCents,
-        advancePaidCents: 0,
       }
     }
 
     if (account.source !== 'PLUGGY') {
       const rows = await this.repo.findRows(account.userId, resolveMonthRange(month), account.id)
-      return { ...computeInvoice(rows, selfPersonId), estimatedCents: 0, advancePaidCents: 0 }
+      return { ...computeInvoice(rows, selfPersonId), estimatedCents: 0 }
     }
 
     const [rows, estimated] = await Promise.all([
@@ -204,39 +192,9 @@ export class InvoiceService {
       this.openEstimatedInstallments(account),
     ])
     const estimatedRows = estimated.map(toInvoiceRow)
-    const advancePaid = await this.advancePaid(account)
     return {
-      ...applyAdvancePayment(
-        computeInvoice([...keepNextDueInstallmentOnly(rows), ...estimatedRows], selfPersonId),
-        advancePaid,
-      ),
+      ...computeInvoice([...keepNextDueInstallmentOnly(rows), ...estimatedRows], selfPersonId),
       estimatedCents: computeInvoice(estimatedRows, selfPersonId).totalCents,
-      advancePaidCents: advancePaid,
-    }
-  }
-
-  private async advancePaid(account: AccountWithPluggyItem): Promise<number> {
-    if (!account.closingDay) return 0
-    const since = lastClosingCutoff(account.closingDay)
-    const payments = await this.repo.sumPaymentsSince(account.userId, account.id, since)
-    if (payments === 0) return 0
-    return advancePaidCents(payments, await this.closedBillCents(account, since))
-  }
-
-  // O Pluggy só materializa a fatura depois de um tempo: a última que ele manda pode ser a do ciclo anterior (já
-  // paga, vencimento antes do último fechamento). Só vale a fatura que vence depois do fechamento.
-  private async closedBillCents(account: AccountWithPluggyItem, since: Date): Promise<number | null> {
-    if (account.closedBillCents !== null) return account.closedBillCents
-    if (!account.externalAccountId) return null
-    try {
-      const bill = await this.pluggy.getLastClosedBill(account.externalAccountId)
-      if (bill?.totalAmount == null || bill.dueDate.slice(0, 10) < since.toISOString().slice(0, 10)) return null
-      return Math.round(Math.abs(bill.totalAmount) * 100)
-    } catch (error) {
-      this.logger.warn(
-        `Não foi possível buscar a última fatura fechada no Pluggy pra conta ${account.id}: ${String(error)}`,
-      )
-      return null
     }
   }
 

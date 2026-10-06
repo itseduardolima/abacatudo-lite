@@ -80,19 +80,3 @@ export function mergeInvoices(invoices: Invoice[]): Invoice {
     { totalCents: 0, mineCents: 0, notMineCents: 0 },
   )
 }
-
-// "Quanto falta pagar" da fatura aberta (03-regras-negocio § Fatura): o banco aplica o pagamento primeiro na
-// fatura fechada e só o que passa dela abate a aberta. Sobra = pagamentos desde o último fechamento menos o
-// total da fatura fechada. Sem esse total (cartão sem fatura do banco e sem valor informado), não abate nada.
-export function advancePaidCents(paymentsSinceClosingCents: number, closedBillCents: number | null): number {
-  if (closedBillCents === null) return 0
-  return Math.max(paymentsSinceClosingCents - closedBillCents, 0)
-}
-
-export function applyAdvancePayment(invoice: Invoice, advancePaid: number): Invoice {
-  return {
-    totalCents: invoice.totalCents - advancePaid,
-    mineCents: invoice.mineCents - advancePaid,
-    notMineCents: invoice.notMineCents,
-  }
-}

@@ -18,8 +18,6 @@ export const accountInvoiceSchema = z
     isForecast: z.boolean(),
     // Quanto do total é parcela estimada (03-regras-negocio § Fatura prevista); 0 fora de mês futuro.
     estimatedCents: centsSchema,
-    // Pagamento adiantado já abatido do total (o que passou da fatura fechada); 0 se não houve.
-    advancePaidCents: centsSchema,
     lastForecastMonth: z
       .string()
       .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
