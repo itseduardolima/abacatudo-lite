@@ -1,4 +1,4 @@
-FROM node:22-alpine AS base
+FROM node:26-alpine AS base
 RUN corepack enable && corepack prepare pnpm@11.5.1 --activate
 WORKDIR /repo
 
@@ -21,7 +21,7 @@ RUN pnpm --filter @gastos/shared build \
  && cp -r apps/api/prisma /out/prisma \
  && cd /out && npx --no-install prisma generate
 
-FROM node:22-alpine AS runner
+FROM node:26-alpine AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /out ./
