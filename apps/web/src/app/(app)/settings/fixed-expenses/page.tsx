@@ -6,16 +6,9 @@ import { BackIcon, IconButton } from '@/components/ui/IconButton'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Input } from '@/components/ui/Input'
 import { MoneyInput } from '@/components/ui/MoneyInput'
-import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { MoneyText } from '@/components/finance/MoneyText'
 import { FixedExpenseActionsSheet } from './fixed-expense-actions-sheet'
 import { useFixedExpensesPage } from './use-fixed-expenses-page'
-
-const PAY_HALF_LABEL = {
-  1: 'na 1ª quinzena (dia 15)',
-  2: 'na 2ª quinzena (dia 30)',
-  3: 'metade em cada quinzena',
-} as const
 
 export default function FixedExpensesPage() {
   const {
@@ -25,8 +18,6 @@ export default function FixedExpensesPage() {
     openForm,
     closeForm,
     register,
-    half,
-    setHalf,
     errors,
     onSubmit,
     isSubmitting,
@@ -65,7 +56,6 @@ export default function FixedExpensesPage() {
               </span>
               <div className="flex-1">
                 <p className="font-semibold text-ink">{expense.name}</p>
-                <p className="text-xs text-muted">Paga {PAY_HALF_LABEL[expense.half]}</p>
               </div>
               <MoneyText cents={expense.amountCents} />
               <Button
@@ -104,16 +94,6 @@ export default function FixedExpensesPage() {
           {ruleError && <InlineAlert>{ruleError}</InlineAlert>}
           <Input label="Nome" placeholder="Aluguel" error={errors.name?.message} {...register('name')} />
           <MoneyInput label="Valor mensal" error={errors.amount?.message} {...register('amount')} />
-          <SegmentedControl
-            label="Quinzena de pagamento"
-            options={[
-              { value: '1', label: 'Dia 15' },
-              { value: '2', label: 'Dia 30' },
-              { value: '3', label: 'Dividido' },
-            ]}
-            value={half}
-            onChange={setHalf}
-          />
           <div className="mt-2 flex gap-3">
             <Button type="submit" state={isSubmitting ? 'loading' : 'idle'}>
               {isEditing ? 'Salvar alterações' : 'Salvar'}

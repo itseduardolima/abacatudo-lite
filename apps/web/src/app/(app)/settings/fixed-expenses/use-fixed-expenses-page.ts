@@ -10,8 +10,6 @@ import { useFixedExpenses } from '@/hooks/queries/use-fixed-expenses'
 import { ApiClientError } from '@/lib/api-client'
 import { formatMoney, parseMoneyInput } from '@/lib/utils/format-money'
 
-const HALF_BY_VALUE = { '1': 1, '2': 2, '3': 3 } as const
-
 interface FormValues {
   name: string
   amount: string
@@ -28,7 +26,6 @@ export function useFixedExpensesPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [ruleError, setRuleError] = useState<string | null>(null)
-  const [half, setHalf] = useState<'1' | '2' | '3'>('1')
   const submissionRef = useRef(0)
   const {
     register,
@@ -48,12 +45,11 @@ export function useFixedExpensesPage() {
     }
 
     try {
-      const input = { name: values.name, amountCents, half: HALF_BY_VALUE[half] }
+      const input = { name: values.name, amountCents }
       if (editingId) await updateFixedExpense.mutateAsync({ id: editingId, ...input })
       else await createFixedExpense.mutateAsync(input)
       if (submission !== submissionRef.current) return
       reset()
-      setHalf('1')
       setEditingId(null)
       setIsFormOpen(false)
     } catch (error) {
@@ -76,13 +72,10 @@ export function useFixedExpensesPage() {
       submissionRef.current++
       setIsFormOpen(false)
       setEditingId(null)
-      setHalf('1')
       reset()
       setRuleError(null)
     },
     register,
-    half,
-    setHalf,
     errors,
     onSubmit,
     isSubmitting: createFixedExpense.isPending || updateFixedExpense.isPending,
@@ -95,7 +88,6 @@ export function useFixedExpensesPage() {
       setRuleError(null)
       setMenuId(null)
       setEditingId(expense.id)
-      setHalf(String(expense.half) as '1' | '2' | '3')
       reset({ name: expense.name, amount: formatMoney(expense.amountCents).replace('R$ ', '') })
       setIsFormOpen(true)
     },
