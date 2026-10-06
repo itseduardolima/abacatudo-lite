@@ -5,7 +5,7 @@ import { Check } from 'lucide-react'
 import { useEffect } from 'react'
 import { BANK_LOGO_LABEL, BankAvatar } from '@/components/finance/BankAvatar'
 
-const OPTIONS: BankLogo[] = ['nubank', 'banco-do-brasil', 'picpay', 'infinitepay']
+const OPTIONS: BankLogo[] = ['nubank', 'banco-do-brasil', 'picpay', 'infinitepay', 'mercado-pago', 'inter']
 
 // Mesmo padrão de bottom sheet do protótipo (véu + folha com puxador, já usado no menu Configurar e no
 // detalhe de transação) — escolher fecha na hora, sem botão "Salvar" à parte.

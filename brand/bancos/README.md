@@ -1,6 +1,6 @@
 # Logos de bancos
 
-`nubank.svg`, `picpay.svg` e `banco-do-brasil.svg` (recebidos de Downloads). Única alteração:
+`nubank.svg`, `picpay.svg`, `banco-do-brasil.svg`, `mercado-pago.svg` e `inter.png` (recebidos de Downloads). Única alteração:
 no Banco do Brasil foi removido o quadrado branco de fundo (`<path fill="#fff" ...>`), para o logo
 funcionar em qualquer avatar. Não recolorir.
 

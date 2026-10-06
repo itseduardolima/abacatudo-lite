@@ -36,7 +36,6 @@ export default function ConnectBankPage() {
             <p className="text-center text-lg font-medium text-ink">
               {(connectionStatus && STATUS_LABEL[connectionStatus]) ?? 'Conectando…'}
             </p>
-            <p className="text-center text-sm text-muted">Pode sair dessa tela — a leitura continua sozinha.</p>
           </>
         )}
         {isError && (

@@ -64,7 +64,7 @@ teclado. Protótipo em `gastos-prototipo` (página "Desktop", 11 telas).
 
 ## Logos de bancos
 
-Nubank, Banco do Brasil e PicPay têm logo (`brand/bancos/`); as cores são das
+Nubank, Banco do Brasil, PicPay, Mercado Pago e Inter têm logo (`brand/bancos/`); as cores são das
 marcas dos bancos (roxo, azul, verde) e **não entram na paleta da UI**.
 
 - **Sempre num avatar redondo branco** (`--color-canvas`) com contorno
