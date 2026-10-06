@@ -141,5 +141,5 @@ docker compose up -d --build    # sobe tudo na VPS
 ## Estado atual do projeto
 
 Clone enxuto do `gastos-web` (AbacaTudo). Fora de escopo aqui, por decisão de produto: extrato/Movimentações
-(só cartão de crédito), conta de benefício, divisão por quinzena (teto só mensal) e total da fatura fechada
-(a fatura é só a aberta). O histórico anterior está no repositório `gastos-web`. Ver `TODO.md`.
+(só cartão de crédito), conta de benefício e divisão por quinzena (teto só mensal)
+A fatura segue igual ao original. O histórico anterior está no repositório `gastos-web`. Ver `TODO.md`.
