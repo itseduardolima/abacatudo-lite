@@ -186,11 +186,6 @@ function TransactionsContent() {
               </div>
             </div>
           </div>
-          {invoice.advancePaidCents > 0 && (
-            <p className="text-xs text-muted">
-              Já abatido <MoneyText cents={invoice.advancePaidCents} className="!text-xs" /> de pagamento adiantado.
-            </p>
-          )}
           {invoice.estimatedCents > 0 && (
             <p className="text-xs text-muted">
               Inclui <MoneyText cents={invoice.estimatedCents} className="!text-xs" /> de parcelas estimadas (o banco
