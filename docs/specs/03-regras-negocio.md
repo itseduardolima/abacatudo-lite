@@ -395,13 +395,8 @@ teto variável = renda mensal (fixa + benefícios)
   `kind = EXPENSE`), com `personId` = self (ou split de self), no mês de
   `occurredAt`. Não entram: nada que não seja cartão de crédito (débito, Pix
   etc.), a linha `CARD_PAYMENT` e gastos de outras Persons.
-- **Quinzena**: a renda é informada em dois salários, o da 1ª quinzena (dia 15, cobre os dias 1–15) e o da
-  2ª (dia 30, cobre 16–fim do mês); o teto mensal é a soma. Cada gasto fixo tem uma quinzena de pagamento
-  (1ª, 2ª ou dividido meio a meio, o centavo ímpar na 2ª; editável). No mês atual, o gasto da quinzena = minha parte nas compras de cartão **com data dentro da
-  quinzena** (parcela pela data de vencimento, fatura fechada fora) + gastos fixos daquela quinzena, contra o
-  salário dela. O card mostra, na barra do mês, um marcador no teto do dia 15 com o quanto já foi gasto na 1ª quinzena
-  (só no mês atual). Ao lado do "Sobram" do mês, "Sobram até dia 15" (1ª quinzena) ou "até dia 30" (2ª): o salário da
-  quinzena atual menos o gasto dela.
+- **Renda única**: a renda é informada em um só salário mensal, que é o teto do mês; não há divisão por
+  quinzena. O card da Início mostra o gasto do mês na barra e o "Sobram" do mês.
 - **Ritmo**: compara o gasto do mês (fatura aberta somada em todos os
   cartões + gastos fixos ativos) com o esperado linear até hoje, sobre o
   teto; sinaliza se está acima. O card da Início mostra também **quanto foi gasto

@@ -1302,3 +1302,6 @@ typecheck/lint/build limpos).
 - [ ] 5.4 — Rótulo "transferência entre suas contas"/"pagamento de fatura"
 - [ ] 5.5 — Nota opcional em movimentação
 - [ ] 12.5 — Checklist do primeiro deploy
+
+- [x] Quinzena removida: orçamento só mensal, renda em um único salário, gasto fixo sem quinzena de pagamento,
+      card da Início sem marcador do dia 15 (2026-10-06).
