@@ -1,4 +1,6 @@
-import { isInOpenCycle } from './transaction.repository'
+import type { PrismaService } from '../../prisma/prisma.client'
+import { InvoiceRepository } from '../invoice/invoice.repository'
+import { isInOpenCycle, TransactionRepository } from './transaction.repository'
 
 const NOW = new Date('2026-10-03T23:00:00.000Z')
 const OCTOBER = { start: new Date('2026-10-01T04:00:00.000Z'), end: new Date('2026-11-01T04:00:00.000Z') }
@@ -49,5 +51,31 @@ describe('isInOpenCycle', () => {
     expect(
       isInOpenCycle(row({ billId: 'bill-1', occurredAt: new Date('2026-01-01T00:00:00.000Z') }), OCTOBER, NOW),
     ).toBe(true)
+  })
+})
+
+describe('parcelas de compra cancelada fora dos meses futuros', () => {
+  const MONTHS = [1, 2, 3].map((n) => ({
+    start: new Date(Date.UTC(2026, 9 + n, 1, 4)),
+    end: new Date(Date.UTC(2026, 10 + n, 1, 4)),
+  }))
+
+  it('a lista e os totais de previsão filtram cancelledAt null em cada mês +1..+3', async () => {
+    const findMany = jest.fn().mockResolvedValue([])
+    const aggregate = jest.fn().mockResolvedValue({ _max: { installmentDueAt: null } })
+    const prisma = { transaction: { findMany, aggregate } } as unknown as PrismaService
+    const transactions = new TransactionRepository(prisma)
+    const invoices = new InvoiceRepository(prisma)
+
+    for (const range of MONTHS) {
+      await transactions.findForecast('user-1', range)
+      await invoices.findForecastRows('user-1', 'acc-1', range)
+      await invoices.findStatementForecastRows('user-1', 'acc-1', range)
+    }
+    await invoices.findLastInstallmentDueAt('user-1', 'acc-1')
+
+    expect(findMany).toHaveBeenCalledTimes(9)
+    for (const call of findMany.mock.calls) expect(call[0].where).toMatchObject({ cancelledAt: null })
+    expect(aggregate.mock.calls[0][0].where).toMatchObject({ cancelledAt: null })
   })
 })

@@ -199,8 +199,10 @@ pode marcar a compra como cancelada (`Transaction.cancelledAt`), e reverter.
 - **Fora de toda conta:** fatura aberta e prevista, "Meu"/"Não é meu", orçamento
   e ritmo, relatórios, assinaturas, economia, mensagem de conta e sugestão de
   categoria da IA ignoram linha cancelada.
-- **Só a lista de lançamentos mostra:** a linha aparece riscada, com o selo
-  "Cancelada", pra poder reativar.
+- **Meses futuros:** parcela cancelada não aparece na fatura prevista (nem no
+  total, nem na lista) e não estende o último mês de previsão.
+- **Só a lista do mês atual (fatura aberta) mostra:** a linha aparece riscada,
+  com o selo "Cancelada", pra poder reativar.
 - **O sync não mexe:** `upsertTransaction` nunca escreve `cancelledAt`, então um
   novo sync mantém a marca.
 - Reversível: `PATCH /transactions/:id/cancellation` com `{ cancelled: false }`.

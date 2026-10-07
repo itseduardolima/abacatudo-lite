@@ -62,6 +62,7 @@ export class TransactionRepository {
     return this.prisma.transaction.findMany({
       where: {
         userId,
+        cancelledAt: null,
         billId: null,
         installmentDueAt: { gte: range.start, lt: range.end },
         account: { type: 'CREDIT_CARD', source: 'PLUGGY' },
