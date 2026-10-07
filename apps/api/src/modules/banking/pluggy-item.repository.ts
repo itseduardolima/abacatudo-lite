@@ -21,6 +21,10 @@ export class PluggyItemRepository {
     })
   }
 
+  findByPluggyItemId(pluggyItemId: string): Promise<PluggyItem | null> {
+    return this.prisma.pluggyItem.findUnique({ where: { pluggyItemId } })
+  }
+
   findById(userId: string, id: string): Promise<PluggyItem | null> {
     return this.prisma.pluggyItem.findFirst({ where: { userId, id } })
   }

@@ -1,6 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common'
 import type { CardHolderHint, PluggyItem as PluggyItemRow, Rule } from '@prisma/client'
-import type { BankConnection, ConnectBankResponse, SyncResult } from '@gastos/shared'
+import type {
+  BankConnection,
+  ConnectBankResponse,
+  RegisterBankItemInput,
+  RegisterBankItemResponse,
+  SyncResult,
+} from '@gastos/shared'
 import { DomainError, NotFoundError } from '../../common/errors/domain.error'
 import { AccountRepository } from '../account/account.repository'
 import { CardHolderHintRepository } from '../card-holder-hint/card-holder-hint.repository'
@@ -42,14 +48,35 @@ export class BankingService {
     private readonly cardHolderHints: CardHolderHintRepository,
   ) {}
 
-  async connect(userId: string): Promise<ConnectBankResponse> {
-    const { pluggyItemId, authorizeUrl } = await this.pluggy.createMeuPluggyItem()
+  async connect(): Promise<ConnectBankResponse> {
+    return { connectToken: await this.pluggy.createConnectToken() }
+  }
+
+  async register(userId: string, input: RegisterBankItemInput): Promise<RegisterBankItemResponse> {
+    const existing = await this.items.findByPluggyItemId(input.pluggyItemId)
+    if (existing) {
+      if (existing.userId !== userId) throw NOT_FOUND()
+      return { id: existing.id }
+    }
+
+    const oldItem = input.replacesId ? await this.items.findById(userId, input.replacesId) : null
+    if (input.replacesId && !oldItem) throw NOT_FOUND()
+
+    const remote = await this.pluggy.getItem(input.pluggyItemId)
     const item = await this.items.create(userId, {
-      pluggyItemId,
-      institutionName: 'Meu Pluggy',
+      pluggyItemId: remote.id,
+      institutionName: oldItem?.institutionName ?? 'Meu Pluggy',
       status: 'WAITING_USER_INPUT',
     })
-    return { id: item.id, authorizeUrl }
+
+    if (oldItem && oldItem.status !== 'DISCONNECTED') {
+      await this.pluggy
+        .deleteItem(oldItem.pluggyItemId)
+        .then(() => this.items.update(userId, oldItem.id, { status: 'DISCONNECTED' }))
+        .catch(() => undefined)
+    }
+
+    return { id: item.id }
   }
 
   async listItems(userId: string): Promise<BankConnection[]> {
@@ -57,7 +84,7 @@ export class BankingService {
   }
 
   // Sem webhook (Meu Pluggy não tem — 07-integracao-bancaria): o front chama isto em polling depois de
-  // mandar o usuário para authorizeUrl. Assim que o status vira UPDATED pela primeira vez, sincroniza.
+  // concluir o widget (register). Assim que o status vira UPDATED pela primeira vez, sincroniza.
   async checkStatus(userId: string, id: string): Promise<BankConnection> {
     const item = await this.items.findById(userId, id)
     if (!item) throw NOT_FOUND()
@@ -135,35 +162,9 @@ export class BankingService {
     return toConnectionDto(refreshed)
   }
 
-  // Reconectar (8.4): testado ao vivo contra o Pluggy real que PATCH no Item não é suportado pelo conector
-  // Meu Pluggy ("MeuPluggy item cant be updated") — diferente do que 07-integracao-bancaria assumia. Então
-  // reconectar cria um Item novo, igual o connect() original; Account/histórico não duplicam porque
-  // upsertFromSync já casa pela conta externa do Pluggy (estável entre Items, confirmado ao vivo com 2
-  // Items reais pro mesmo banco: mesma Account, mesmas 1674 transações, nunca dobrou).
   async reconnect(userId: string, id: string): Promise<ConnectBankResponse> {
-    const oldItem = await this.items.findById(userId, id)
-    if (!oldItem) throw NOT_FOUND()
-
-    const { pluggyItemId, authorizeUrl } = await this.pluggy.createMeuPluggyItem()
-    const newItem = await this.items.create(userId, {
-      pluggyItemId,
-      institutionName: oldItem.institutionName,
-      status: 'WAITING_USER_INPUT',
-    })
-
-    // Revoga o item antigo, melhor esforço (mesma lógica do disconnect/8.5, já auto-recupera de um 404 de
-    // retry) — se falhar, o usuário fica com 2 items por um tempo, sem risco de dado, e ainda pode chamar
-    // DELETE nesse item antigo manualmente depois. Nunca bloqueia o reconectar em si, que já deu certo.
-    if (oldItem.status !== 'DISCONNECTED') {
-      try {
-        await this.pluggy.deleteItem(oldItem.pluggyItemId)
-        await this.items.update(userId, oldItem.id, { status: 'DISCONNECTED' })
-      } catch {
-        // melhor esforço — ver comentário acima.
-      }
-    }
-
-    return { id: newItem.id, authorizeUrl }
+    if (!(await this.items.findById(userId, id))) throw NOT_FOUND()
+    return this.connect()
   }
 
   private async runSync(userId: string, itemId: string): Promise<SyncResult> {

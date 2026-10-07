@@ -29,8 +29,19 @@ export const bankConnectionSchema = z
   .strict()
 export type BankConnection = z.infer<typeof bankConnectionSchema>
 
-export const connectBankResponseSchema = z.object({ id: idSchema, authorizeUrl: z.string().url() }).strict()
+export const connectBankResponseSchema = z.object({ connectToken: z.string().min(1) }).strict()
 export type ConnectBankResponse = z.infer<typeof connectBankResponseSchema>
+
+export const registerBankItemInputSchema = z
+  .object({
+    pluggyItemId: z.string().min(1).max(100),
+    replacesId: idSchema.optional(),
+  })
+  .strict()
+export type RegisterBankItemInput = z.infer<typeof registerBankItemInputSchema>
+
+export const registerBankItemResponseSchema = z.object({ id: idSchema }).strict()
+export type RegisterBankItemResponse = z.infer<typeof registerBankItemResponseSchema>
 
 export const syncResultSchema = z
   .object({ accountsSynced: z.number().int(), transactionsSynced: z.number().int() })

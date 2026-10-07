@@ -1,4 +1,9 @@
-import { bankConnectionSchema, bankConnectionStatusSchema, connectBankResponseSchema } from './banking'
+import {
+  bankConnectionSchema,
+  bankConnectionStatusSchema,
+  connectBankResponseSchema,
+  registerBankItemInputSchema,
+} from './banking'
 
 describe('bankConnectionSchema', () => {
   it('aceita a forma completa e rejeita campo extra', () => {
@@ -37,16 +42,24 @@ describe('bankConnectionSchema', () => {
 })
 
 describe('connectBankResponseSchema', () => {
-  it('exige uma URL de verdade em authorizeUrl', () => {
+  it('exige um connectToken não vazio e rejeita campo extra', () => {
+    expect(connectBankResponseSchema.safeParse({ connectToken: 'jwt' }).success).toBe(true)
+    expect(connectBankResponseSchema.safeParse({ connectToken: '' }).success).toBe(false)
+    expect(connectBankResponseSchema.safeParse({ connectToken: 'jwt', id: 'x' }).success).toBe(false)
+  })
+})
+
+describe('registerBankItemInputSchema', () => {
+  it('exige pluggyItemId; replacesId é opcional e precisa ser um id válido', () => {
+    expect(registerBankItemInputSchema.safeParse({ pluggyItemId: 'abc' }).success).toBe(true)
+    expect(registerBankItemInputSchema.safeParse({}).success).toBe(false)
+    expect(registerBankItemInputSchema.safeParse({ pluggyItemId: '' }).success).toBe(false)
     expect(
-      connectBankResponseSchema.safeParse({ id: '11111111-1111-1111-1111-111111111111', authorizeUrl: 'nao-e-url' })
-        .success,
-    ).toBe(false)
-    expect(
-      connectBankResponseSchema.safeParse({
-        id: '11111111-1111-1111-1111-111111111111',
-        authorizeUrl: 'https://my.pluggy.ai/oauth/authorize',
+      registerBankItemInputSchema.safeParse({
+        pluggyItemId: 'abc',
+        replacesId: '11111111-1111-1111-1111-111111111111',
       }).success,
     ).toBe(true)
+    expect(registerBankItemInputSchema.safeParse({ pluggyItemId: 'abc', replacesId: 'nao-e-id' }).success).toBe(false)
   })
 })

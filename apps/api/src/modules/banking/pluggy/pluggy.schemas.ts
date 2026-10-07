@@ -5,6 +5,8 @@ import { z } from 'zod'
 
 export const pluggyAuthResponseSchema = z.object({ apiKey: z.string() })
 
+export const pluggyConnectTokenSchema = z.object({ accessToken: z.string().min(1) })
+
 export const pluggyItemStatusSchema = z.enum([
   'WAITING_USER_INPUT',
   'UPDATING',

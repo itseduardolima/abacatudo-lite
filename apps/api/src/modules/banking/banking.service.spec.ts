@@ -17,7 +17,7 @@ import type { PluggyItemRepository } from './pluggy-item.repository'
 
 function pluggyMock() {
   return {
-    createMeuPluggyItem: jest.fn(),
+    createConnectToken: jest.fn(),
     getItem: jest.fn(),
     listAccounts: jest.fn(),
     listTransactions: jest.fn(),
@@ -31,6 +31,7 @@ function itemsMock() {
     findMany: jest.fn(),
     findConnected: jest.fn(),
     findById: jest.fn(),
+    findByPluggyItemId: jest.fn(),
     update: jest.fn(),
   } as unknown as jest.Mocked<PluggyItemRepository>
 }
@@ -87,6 +88,12 @@ function newService(
     overrides.rules ?? rulesMock(),
     overrides.cardHolderHints ?? cardHolderHintsMock(),
   )
+}
+
+const REMOTE_ITEM = {
+  id: 'pluggy-item-1',
+  status: 'UPDATING' as const,
+  connector: { id: 200, name: 'MeuPluggy' },
 }
 
 function itemRow(overrides: Partial<PluggyItemRow> = {}): PluggyItemRow {
@@ -165,24 +172,139 @@ function cardHolderHintRow(overrides: Partial<CardHolderHint> = {}): CardHolderH
 }
 
 describe('BankingService', () => {
-  it('connect: cria o item Meu Pluggy e devolve a URL de autorização', async () => {
+  it('connect: devolve o connectToken do widget e não cria nenhum item (plano gratuito só cria pelo widget)', async () => {
     const pluggy = pluggyMock()
-    pluggy.createMeuPluggyItem.mockResolvedValue({
-      pluggyItemId: 'pluggy-item-1',
-      authorizeUrl: 'https://my.pluggy.ai/x',
-    })
+    pluggy.createConnectToken.mockResolvedValue('connect-jwt')
     const items = itemsMock()
+    const service = newService({ pluggy, items })
+
+    const result = await service.connect()
+
+    expect(result).toEqual({ connectToken: 'connect-jwt' })
+    expect(items.create).not.toHaveBeenCalled()
+  })
+
+  it('register: confere o Item no Pluggy e cria a conexão local aguardando o primeiro status', async () => {
+    const pluggy = pluggyMock()
+    pluggy.getItem.mockResolvedValue(REMOTE_ITEM)
+    const items = itemsMock()
+    items.findByPluggyItemId.mockResolvedValue(null)
     items.create.mockResolvedValue(itemRow())
     const service = newService({ pluggy, items })
 
-    const result = await service.connect('user-1')
+    const result = await service.register('user-1', { pluggyItemId: 'pluggy-item-1' })
 
+    expect(pluggy.getItem).toHaveBeenCalledWith('pluggy-item-1')
     expect(items.create).toHaveBeenCalledWith('user-1', {
       pluggyItemId: 'pluggy-item-1',
       institutionName: 'Meu Pluggy',
       status: 'WAITING_USER_INPUT',
     })
-    expect(result).toEqual({ id: 'item-1', authorizeUrl: 'https://my.pluggy.ai/x' })
+    expect(result).toEqual({ id: 'item-1' })
+  })
+
+  it('register: Item que não existe na nossa conta Pluggy não vira conexão', async () => {
+    const pluggy = pluggyMock()
+    pluggy.getItem.mockRejectedValue(new Error('Pluggy 404'))
+    const items = itemsMock()
+    items.findByPluggyItemId.mockResolvedValue(null)
+    const service = newService({ pluggy, items })
+
+    await expect(service.register('user-1', { pluggyItemId: 'inventado' })).rejects.toThrow('Pluggy 404')
+
+    expect(items.create).not.toHaveBeenCalled()
+  })
+
+  it('register: Item que já é do próprio usuário é idempotente (widget disparou onSuccess duas vezes)', async () => {
+    const pluggy = pluggyMock()
+    const items = itemsMock()
+    items.findByPluggyItemId.mockResolvedValue(itemRow({ id: 'item-9', userId: 'user-1' }))
+    const service = newService({ pluggy, items })
+
+    const result = await service.register('user-1', { pluggyItemId: 'pluggy-item-1' })
+
+    expect(result).toEqual({ id: 'item-9' })
+    expect(pluggy.getItem).not.toHaveBeenCalled()
+    expect(items.create).not.toHaveBeenCalled()
+  })
+
+  it('register: Item que já é de outro usuário dá 404 e nada é criado', async () => {
+    const pluggy = pluggyMock()
+    const items = itemsMock()
+    items.findByPluggyItemId.mockResolvedValue(itemRow({ userId: 'user-2' }))
+    const service = newService({ pluggy, items })
+
+    await expect(service.register('user-1', { pluggyItemId: 'pluggy-item-1' })).rejects.toBeInstanceOf(NotFoundError)
+
+    expect(items.create).not.toHaveBeenCalled()
+  })
+
+  it('register com replacesId: cria o Item novo e revoga o antigo', async () => {
+    const items = itemsMock()
+    items.findByPluggyItemId.mockResolvedValue(null)
+    items.findById.mockResolvedValue(
+      itemRow({ id: 'item-1', pluggyItemId: 'pluggy-item-1', status: 'LOGIN_ERROR', institutionName: 'Banco X' }),
+    )
+    items.create.mockResolvedValue(itemRow({ id: 'item-2', pluggyItemId: 'pluggy-item-2' }))
+    const pluggy = pluggyMock()
+    pluggy.getItem.mockResolvedValue({ ...REMOTE_ITEM, id: 'pluggy-item-2' })
+    const service = newService({ items, pluggy })
+
+    const result = await service.register('user-1', { pluggyItemId: 'pluggy-item-2', replacesId: 'item-1' })
+
+    expect(items.create).toHaveBeenCalledWith('user-1', {
+      pluggyItemId: 'pluggy-item-2',
+      institutionName: 'Banco X',
+      status: 'WAITING_USER_INPUT',
+    })
+    expect(pluggy.deleteItem).toHaveBeenCalledWith('pluggy-item-1')
+    expect(items.update).toHaveBeenCalledWith('user-1', 'item-1', { status: 'DISCONNECTED' })
+    expect(result).toEqual({ id: 'item-2' })
+  })
+
+  it('register com replacesId: item antigo já desconectado — não tenta revogar de novo no Pluggy', async () => {
+    const items = itemsMock()
+    items.findByPluggyItemId.mockResolvedValue(null)
+    items.findById.mockResolvedValue(itemRow({ id: 'item-1', status: 'DISCONNECTED' }))
+    items.create.mockResolvedValue(itemRow({ id: 'item-2' }))
+    const pluggy = pluggyMock()
+    pluggy.getItem.mockResolvedValue({ ...REMOTE_ITEM, id: 'pluggy-item-2' })
+    const service = newService({ items, pluggy })
+
+    await service.register('user-1', { pluggyItemId: 'pluggy-item-2', replacesId: 'item-1' })
+
+    expect(pluggy.deleteItem).not.toHaveBeenCalled()
+  })
+
+  it('register com replacesId de outro usuário: 404 antes de criar qualquer coisa', async () => {
+    const items = itemsMock()
+    items.findByPluggyItemId.mockResolvedValue(null)
+    items.findById.mockResolvedValue(null)
+    const pluggy = pluggyMock()
+    const service = newService({ items, pluggy })
+
+    await expect(
+      service.register('user-1', { pluggyItemId: 'pluggy-item-2', replacesId: 'item-de-outro' }),
+    ).rejects.toBeInstanceOf(NotFoundError)
+
+    expect(pluggy.getItem).not.toHaveBeenCalled()
+    expect(items.create).not.toHaveBeenCalled()
+  })
+
+  it('register com replacesId: se revogar o antigo falhar, ainda devolve a nova conexão (melhor esforço, não bloqueia)', async () => {
+    const items = itemsMock()
+    items.findByPluggyItemId.mockResolvedValue(null)
+    items.findById.mockResolvedValue(itemRow({ id: 'item-1', status: 'UPDATED' }))
+    items.create.mockResolvedValue(itemRow({ id: 'item-2' }))
+    const pluggy = pluggyMock()
+    pluggy.getItem.mockResolvedValue({ ...REMOTE_ITEM, id: 'pluggy-item-2' })
+    pluggy.deleteItem.mockRejectedValue(new Error('Pluggy fora do ar'))
+    const service = newService({ items, pluggy })
+
+    const result = await service.register('user-1', { pluggyItemId: 'pluggy-item-2', replacesId: 'item-1' })
+
+    expect(result).toEqual({ id: 'item-2' })
+    expect(items.update).not.toHaveBeenCalled()
   })
 
   it('checkStatus: 404 quando a conexão não é do usuário', async () => {
@@ -709,98 +831,27 @@ describe('BankingService', () => {
     expect(items.update).not.toHaveBeenCalled()
   })
 
-  it('reconnect: 404 quando a conexão não é do usuário', async () => {
-    const items = itemsMock()
-    items.findById.mockResolvedValue(null)
-    const service = newService({ items })
-
-    await expect(service.reconnect('user-1', 'item-de-outro')).rejects.toBeInstanceOf(NotFoundError)
-  })
-
-  it('reconnect: cria um Item novo (PATCH no mesmo item não é suportado pelo conector Meu Pluggy) e revoga o antigo', async () => {
-    const items = itemsMock()
-    items.findById.mockResolvedValue(
-      itemRow({
-        id: 'item-1',
-        pluggyItemId: 'pluggy-item-1',
-        status: 'LOGIN_ERROR',
-        lastErrorCode: 'INVALID_CREDENTIALS',
-      }),
-    )
-    items.create.mockResolvedValue(itemRow({ id: 'item-2', pluggyItemId: 'pluggy-item-2' }))
-    const pluggy = pluggyMock()
-    pluggy.createMeuPluggyItem.mockResolvedValue({
-      pluggyItemId: 'pluggy-item-2',
-      authorizeUrl: 'https://my.pluggy.ai/x2',
-    })
-    const service = newService({ items, pluggy })
-
-    const result = await service.reconnect('user-1', 'item-1')
-
-    expect(items.create).toHaveBeenCalledWith('user-1', {
-      pluggyItemId: 'pluggy-item-2',
-      institutionName: 'Meu Pluggy',
-      status: 'WAITING_USER_INPUT',
-    })
-    expect(pluggy.deleteItem).toHaveBeenCalledWith('pluggy-item-1')
-    expect(items.update).toHaveBeenCalledWith('user-1', 'item-1', { status: 'DISCONNECTED' })
-    expect(result).toEqual({ id: 'item-2', authorizeUrl: 'https://my.pluggy.ai/x2' })
-  })
-
-  it('reconnect: item antigo já desconectado — não tenta revogar de novo no Pluggy', async () => {
-    const items = itemsMock()
-    items.findById.mockResolvedValue(itemRow({ id: 'item-1', status: 'DISCONNECTED' }))
-    items.create.mockResolvedValue(itemRow({ id: 'item-2' }))
-    const pluggy = pluggyMock()
-    pluggy.createMeuPluggyItem.mockResolvedValue({
-      pluggyItemId: 'pluggy-item-2',
-      authorizeUrl: 'https://my.pluggy.ai/x2',
-    })
-    const service = newService({ items, pluggy })
-
-    await service.reconnect('user-1', 'item-1')
-
-    expect(pluggy.deleteItem).not.toHaveBeenCalled()
-  })
-
-  it('reconnect: 404 quando o item antigo não é do usuário, antes de criar qualquer coisa nova', async () => {
+  it('reconnect: 404 quando a conexão não é do usuário, sem gerar token', async () => {
     const items = itemsMock()
     items.findById.mockResolvedValue(null)
     const pluggy = pluggyMock()
     const service = newService({ items, pluggy })
 
     await expect(service.reconnect('user-1', 'item-de-outro')).rejects.toBeInstanceOf(NotFoundError)
-    expect(pluggy.createMeuPluggyItem).not.toHaveBeenCalled()
+    expect(pluggy.createConnectToken).not.toHaveBeenCalled()
   })
 
-  it('reconnect: se criar o Item novo falhar, nunca mexe no item antigo', async () => {
+  it('reconnect: devolve um connectToken e não mexe em nada ainda (o antigo só é revogado no register)', async () => {
     const items = itemsMock()
-    items.findById.mockResolvedValue(itemRow({ status: 'OUTDATED' }))
+    items.findById.mockResolvedValue(itemRow({ id: 'item-1', status: 'LOGIN_ERROR' }))
     const pluggy = pluggyMock()
-    pluggy.createMeuPluggyItem.mockRejectedValue(new Error('Pluggy fora do ar'))
-    const service = newService({ items, pluggy })
-
-    await expect(service.reconnect('user-1', 'item-1')).rejects.toThrow('Pluggy fora do ar')
-
-    expect(pluggy.deleteItem).not.toHaveBeenCalled()
-    expect(items.update).not.toHaveBeenCalled()
-  })
-
-  it('reconnect: se revogar o item antigo falhar, ainda devolve a nova conexão (melhor esforço, não bloqueia)', async () => {
-    const items = itemsMock()
-    items.findById.mockResolvedValue(itemRow({ id: 'item-1', status: 'UPDATED' }))
-    items.create.mockResolvedValue(itemRow({ id: 'item-2' }))
-    const pluggy = pluggyMock()
-    pluggy.createMeuPluggyItem.mockResolvedValue({
-      pluggyItemId: 'pluggy-item-2',
-      authorizeUrl: 'https://my.pluggy.ai/x2',
-    })
-    pluggy.deleteItem.mockRejectedValue(new Error('Pluggy fora do ar'))
+    pluggy.createConnectToken.mockResolvedValue('connect-jwt')
     const service = newService({ items, pluggy })
 
     const result = await service.reconnect('user-1', 'item-1')
 
-    expect(result).toEqual({ id: 'item-2', authorizeUrl: 'https://my.pluggy.ai/x2' })
-    expect(items.update).not.toHaveBeenCalled()
+    expect(result).toEqual({ connectToken: 'connect-jwt' })
+    expect(items.create).not.toHaveBeenCalled()
+    expect(pluggy.deleteItem).not.toHaveBeenCalled()
   })
 })

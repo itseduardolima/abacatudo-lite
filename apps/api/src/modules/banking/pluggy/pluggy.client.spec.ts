@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common'
 import type { ConfigService } from '@nestjs/config'
 import { PluggyClient, PluggyNotConfiguredError, PluggyUnavailableError } from './pluggy.client'
 
@@ -42,67 +43,33 @@ describe('PluggyClient', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('createMeuPluggyItem: autentica, cria o item com o conector 200 e devolve a URL de autorização', async () => {
+  it('createConnectToken: autentica, chama /connect_token e devolve o accessToken', async () => {
     const apiKey = fakeApiKeyJwt(3600)
-    fetchMock.mockResolvedValueOnce(jsonResponse(200, { apiKey })).mockResolvedValueOnce(
-      jsonResponse(200, {
-        id: 'item-1',
-        status: 'WAITING_USER_INPUT',
-        connector: { id: 200, name: 'MeuPluggy' },
-        parameter: { name: 'oauthCode', data: 'https://my.pluggy.ai/oauth/authorize?x=1' },
-      }),
-    )
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(200, { apiKey }))
+      .mockResolvedValueOnce(jsonResponse(200, { accessToken: 'connect-jwt' }))
     const client = new PluggyClient(configMock())
 
-    const result = await client.createMeuPluggyItem()
+    const result = await client.createConnectToken()
 
-    expect(result).toEqual({ pluggyItemId: 'item-1', authorizeUrl: 'https://my.pluggy.ai/oauth/authorize?x=1' })
-    const [authCall, itemCall] = fetchMock.mock.calls as [[string, RequestInit], [string, RequestInit]]
+    expect(result).toBe('connect-jwt')
+    const [authCall, tokenCall] = fetchMock.mock.calls as [[string, RequestInit], [string, RequestInit]]
     expect(authCall[0]).toBe('https://api.pluggy.ai/auth')
-    expect(itemCall[0]).toBe('https://api.pluggy.ai/items')
-    expect(JSON.parse(itemCall[1].body as string)).toEqual({ connectorId: 200, parameters: {} })
-    expect((itemCall[1].headers as Record<string, string>)['x-api-key']).toBe(apiKey)
+    expect(tokenCall[0]).toBe('https://api.pluggy.ai/connect_token')
+    expect(tokenCall[1].method).toBe('POST')
+    expect((tokenCall[1].headers as Record<string, string>)['x-api-key']).toBe(apiKey)
   })
 
-  it('createMeuPluggyItem: URL de autorização não vem na resposta da criação — espera e busca de novo (link OAuth é assíncrono)', async () => {
+  it('createConnectToken: 4xx do Pluggy vira PLUGGY_UNAVAILABLE e o motivo vai pro log, nunca pro cliente', async () => {
+    const logSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
     fetchMock
       .mockResolvedValueOnce(jsonResponse(200, { apiKey: fakeApiKeyJwt(3600) }))
-      .mockResolvedValueOnce(
-        jsonResponse(200, { id: 'item-1', status: 'WAITING_USER_INPUT', connector: { id: 200, name: 'MeuPluggy' } }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse(200, {
-          id: 'item-1',
-          status: 'WAITING_USER_INPUT',
-          connector: { id: 200, name: 'MeuPluggy' },
-          parameter: { name: 'oauthCode', data: 'https://my.pluggy.ai/oauth/authorize?x=1' },
-        }),
-      )
-    jest.useFakeTimers()
+      .mockResolvedValueOnce(jsonResponse(400, { codeDescription: 'SOME_PLAN_LIMIT', message: 'segredo' }))
     const client = new PluggyClient(configMock())
 
-    const assertion = expect(client.createMeuPluggyItem()).resolves.toEqual({
-      pluggyItemId: 'item-1',
-      authorizeUrl: 'https://my.pluggy.ai/oauth/authorize?x=1',
-    })
-    await jest.runAllTimersAsync()
-    await assertion
-    jest.useRealTimers()
-  })
+    await expect(client.createConnectToken()).rejects.toBeInstanceOf(PluggyUnavailableError)
 
-  it('createMeuPluggyItem: URL de autorização nunca aparece, desiste depois do limite de tentativas', async () => {
-    fetchMock
-      .mockResolvedValueOnce(jsonResponse(200, { apiKey: fakeApiKeyJwt(3600) }))
-      .mockResolvedValue(
-        jsonResponse(200, { id: 'item-1', status: 'WAITING_USER_INPUT', connector: { id: 200, name: 'MeuPluggy' } }),
-      )
-    jest.useFakeTimers()
-    const client = new PluggyClient(configMock())
-
-    const assertion = expect(client.createMeuPluggyItem()).rejects.toBeInstanceOf(PluggyUnavailableError)
-    await jest.runAllTimersAsync()
-    await assertion
-    jest.useRealTimers()
+    expect(logSpy).toHaveBeenCalledWith('POST /connect_token: HTTP 400 (SOME_PLAN_LIMIT)')
   })
 
   it('reaproveita a API key enquanto ela não expira (uma chamada a /auth só)', async () => {

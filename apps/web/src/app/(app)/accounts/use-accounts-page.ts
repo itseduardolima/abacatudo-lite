@@ -11,6 +11,7 @@ import { useRestoreAccount } from '@/hooks/queries/use-restore-account'
 import { useSyncBankConnection } from '@/hooks/queries/use-sync-bank-connection'
 import { useUpdateAccount } from '@/hooks/queries/use-update-account'
 import { ApiClientError } from '@/lib/api-client'
+import { PluggyConnectError } from '@/lib/pluggy-connect'
 
 // Hook de página: só orquestração (04-padroes-codigo). Campos de cartão (fechamento, vencimento, limite)
 // ficam pra uma próxima etapa — aqui só nome e tipo, o mínimo pra existir a conta.
@@ -44,12 +45,12 @@ export function useAccountsPage() {
   const onConnectBank = async () => {
     setConnectError(null)
     try {
-      const { id, authorizeUrl } = await connectBank.mutateAsync()
-      window.open(authorizeUrl, '_blank', 'noopener')
-      router.push(`/connect-bank/${id}`)
+      const id = await connectBank.mutateAsync()
+      if (id) router.push(`/connect-bank/${id}`)
     } catch (error) {
-      if (!(error instanceof ApiClientError)) throw error
-      setConnectError(error.error.message)
+      if (error instanceof ApiClientError) setConnectError(error.error.message)
+      else if (error instanceof PluggyConnectError) setConnectError(error.message)
+      else throw error
     }
   }
 

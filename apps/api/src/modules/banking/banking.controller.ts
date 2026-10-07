@@ -1,15 +1,26 @@
-import { Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common'
-import type { BankConnection, ConnectBankResponse, SyncResult } from '@gastos/shared'
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common'
+import type {
+  BankConnection,
+  ConnectBankResponse,
+  RegisterBankItemResponse,
+  SyncResult,
+} from '@gastos/shared'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { BankingService } from './banking.service'
+import { RegisterBankItemDto } from './dto/register-bank-item.dto'
 
 @Controller('banking/items')
 export class BankingController {
   constructor(private readonly banking: BankingService) {}
 
   @Post()
-  connect(@CurrentUser() userId: string): Promise<ConnectBankResponse> {
-    return this.banking.connect(userId)
+  connect(): Promise<ConnectBankResponse> {
+    return this.banking.connect()
+  }
+
+  @Post('register')
+  register(@CurrentUser() userId: string, @Body() body: RegisterBankItemDto): Promise<RegisterBankItemResponse> {
+    return this.banking.register(userId, body)
   }
 
   @Get()

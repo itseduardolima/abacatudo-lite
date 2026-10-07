@@ -9,6 +9,7 @@ import { useConnectBank } from '@/hooks/queries/use-connect-bank'
 import { useInvoices } from '@/hooks/queries/use-invoice'
 import { useMe } from '@/hooks/queries/use-me'
 import { ApiClientError } from '@/lib/api-client'
+import { PluggyConnectError } from '@/lib/pluggy-connect'
 import { latestForecastMonth } from '@/lib/utils/latest-forecast-month'
 
 export function useHomePage() {
@@ -36,17 +37,15 @@ export function useHomePage() {
     invoiceMonth,
   )
 
-  // Abre o widget do Pluggy numa aba nova (é lá que a lista de bancos e o login de verdade acontecem —
-  // nunca dentro do nosso app) e leva pra tela de "conectando", que faz o polling do status.
   const onConnectBank = async () => {
     setConnectError(null)
     try {
-      const { id, authorizeUrl } = await connectBank.mutateAsync()
-      window.open(authorizeUrl, '_blank', 'noopener')
-      router.push(`/connect-bank/${id}`)
+      const id = await connectBank.mutateAsync()
+      if (id) router.push(`/connect-bank/${id}`)
     } catch (error) {
-      if (!(error instanceof ApiClientError)) throw error
-      setConnectError(error.error.message)
+      if (error instanceof ApiClientError) setConnectError(error.error.message)
+      else if (error instanceof PluggyConnectError) setConnectError(error.message)
+      else throw error
     }
   }
 

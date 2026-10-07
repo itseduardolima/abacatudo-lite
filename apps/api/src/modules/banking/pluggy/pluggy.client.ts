@@ -6,6 +6,7 @@ import {
   pluggyAccountsPageSchema,
   pluggyAuthResponseSchema,
   pluggyBillsPageSchema,
+  pluggyConnectTokenSchema,
   pluggyItemSchema,
   pluggyTransactionsPageSchema,
   type PluggyAccount,
@@ -17,14 +18,8 @@ import {
 const BASE_URL = 'https://api.pluggy.ai'
 const REQUEST_TIMEOUT_MS = 15_000
 const MAX_ATTEMPTS = 3
-// Único conector gratuito para uso pessoal (07-integracao-bancaria § Resultado do spike).
-const MEU_PLUGGY_CONNECTOR_ID = 200
 // Trava de segurança contra paginação que nunca termina — bem acima do que uma pessoa física teria de contas.
 const MAX_ACCOUNT_PAGES = 20
-// A resposta da criação do item vem com `parameter: null` — o link OAuth ainda está sendo gerado (visto
-// na prática: ~2s). Espera curta e limitada antes de desistir.
-const AUTHORIZE_URL_POLL_ATTEMPTS = 5
-const AUTHORIZE_URL_POLL_MS = 1500
 
 export class PluggyUnavailableError extends DomainError {
   constructor() {
@@ -45,12 +40,9 @@ export class PluggyClient {
 
   constructor(private readonly config: ConfigService) {}
 
-  async createMeuPluggyItem(): Promise<{ pluggyItemId: string; authorizeUrl: string }> {
-    const item = await this.request('POST', '/items', pluggyItemSchema, {
-      connectorId: MEU_PLUGGY_CONNECTOR_ID,
-      parameters: {},
-    })
-    return { pluggyItemId: item.id, authorizeUrl: await this.waitForAuthorizeUrl(item) }
+  async createConnectToken(): Promise<string> {
+    const { accessToken } = await this.request('POST', '/connect_token', pluggyConnectTokenSchema, {})
+    return accessToken
   }
 
   getItem(pluggyItemId: string): Promise<PluggyItem> {
@@ -104,16 +96,6 @@ export class PluggyClient {
   private transactionsPath(accountId: string, cursor?: string): string {
     if (!cursor) return `/v2/transactions?accountId=${accountId}`
     return cursor.startsWith('http') ? cursor : `/v2/transactions${cursor}`
-  }
-
-  private async waitForAuthorizeUrl(item: PluggyItem): Promise<string> {
-    if (item.parameter?.data) return item.parameter.data
-    for (let attempt = 1; attempt <= AUTHORIZE_URL_POLL_ATTEMPTS; attempt++) {
-      await sleep(AUTHORIZE_URL_POLL_MS)
-      const refreshed = await this.getItem(item.id)
-      if (refreshed.parameter?.data) return refreshed.parameter.data
-    }
-    throw new PluggyUnavailableError()
   }
 
   private async apiKey(): Promise<string> {
@@ -181,7 +163,11 @@ export class PluggyClient {
           continue
         }
         if (!response.ok && !treatAsSuccess.includes(response.status)) {
-          this.logger.error(`${init.method} ${safeUrl(url)}: HTTP ${response.status}`)
+          const reason = await response.json().then(
+            (body: unknown) => (body as { codeDescription?: string } | null)?.codeDescription,
+            () => undefined,
+          )
+          this.logger.error(`${init.method} ${safeUrl(url)}: HTTP ${response.status}${reason ? ` (${reason})` : ''}`)
           throw new PluggyUnavailableError()
         }
         return response
@@ -198,7 +184,6 @@ export class PluggyClient {
   }
 }
 
-// Só o path: a querystring pode ter ids de item/conta.
 function safeUrl(url: string): string {
   return url.split('?')[0]!.replace(BASE_URL, '')
 }
