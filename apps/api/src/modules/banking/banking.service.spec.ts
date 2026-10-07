@@ -19,6 +19,9 @@ function pluggyMock() {
   return {
     createConnectToken: jest.fn(),
     getItem: jest.fn(),
+    refreshItem: jest
+      .fn()
+      .mockResolvedValue({ id: 'pluggy-item-1', status: 'UPDATED', connector: { id: 200, name: 'MeuPluggy' } }),
     listAccounts: jest.fn(),
     listTransactions: jest.fn(),
     deleteItem: jest.fn().mockResolvedValue(undefined),
@@ -423,6 +426,88 @@ describe('BankingService', () => {
 
     items.findById.mockResolvedValue(itemRow({ lastSyncAt: new Date(Date.now() - 16 * 60 * 1000) }))
     await expect(service.manualSync('user-1', 'item-1')).resolves.toEqual({ accountsSynced: 0, transactionsSynced: 0 })
+  })
+
+  describe('manualSync: atualização do item direto no banco', () => {
+    const remote = (status: 'UPDATING' | 'UPDATED' | 'LOGIN_ERROR') => ({
+      id: 'pluggy-item-1',
+      status,
+      connector: { id: 200, name: 'MeuPluggy' },
+      error: status === 'LOGIN_ERROR' ? { code: 'INVALID_CREDENTIALS' } : null,
+    })
+
+    function setup() {
+      const items = itemsMock()
+      items.findById.mockResolvedValue(itemRow())
+      const pluggy = pluggyMock()
+      pluggy.listAccounts.mockResolvedValue([])
+      return { items, pluggy }
+    }
+
+    it('pede ao Pluggy para atualizar o item antes de ler as contas', async () => {
+      const { items, pluggy } = setup()
+      pluggy.refreshItem.mockResolvedValue(remote('UPDATED'))
+
+      await newService({ items, pluggy }).manualSync('user-1', 'item-1')
+
+      expect(pluggy.refreshItem).toHaveBeenCalledWith('pluggy-item-1')
+      expect(pluggy.refreshItem.mock.invocationCallOrder[0]).toBeLessThan(
+        pluggy.listAccounts.mock.invocationCallOrder[0]!,
+      )
+    })
+
+    it('espera o Pluggy terminar de atualizar (UPDATING até UPDATED) antes de ler', async () => {
+      jest.useFakeTimers()
+      try {
+        const { items, pluggy } = setup()
+        pluggy.refreshItem.mockResolvedValue(remote('UPDATING'))
+        pluggy.getItem.mockResolvedValueOnce(remote('UPDATING')).mockResolvedValueOnce(remote('UPDATED'))
+
+        const promise = newService({ items, pluggy }).manualSync('user-1', 'item-1')
+        await jest.advanceTimersByTimeAsync(10_000)
+        await promise
+
+        expect(pluggy.getItem).toHaveBeenCalledTimes(2)
+        expect(pluggy.listAccounts).toHaveBeenCalledTimes(1)
+      } finally {
+        jest.useRealTimers()
+      }
+    })
+
+    it('se o Pluggy recusar a atualização, o sync segue com o que ele já guardou', async () => {
+      const { items, pluggy } = setup()
+      pluggy.refreshItem.mockRejectedValue(new Error('HTTP 400'))
+
+      await expect(newService({ items, pluggy }).manualSync('user-1', 'item-1')).resolves.toEqual({
+        accountsSynced: 0,
+        transactionsSynced: 0,
+      })
+      expect(pluggy.listAccounts).toHaveBeenCalledTimes(1)
+    })
+
+    it('erro de login no banco é gravado no item e o sync continua com os dados guardados', async () => {
+      const { items, pluggy } = setup()
+      pluggy.refreshItem.mockResolvedValue(remote('LOGIN_ERROR'))
+
+      await newService({ items, pluggy }).manualSync('user-1', 'item-1')
+
+      expect(items.update).toHaveBeenCalledWith(
+        'user-1',
+        'item-1',
+        expect.objectContaining({ status: 'LOGIN_ERROR', lastErrorCode: 'INVALID_CREDENTIALS' }),
+      )
+      expect(pluggy.listAccounts).toHaveBeenCalledTimes(1)
+    })
+
+    it('a primeira sincronização depois do widget não pede atualização (o item acabou de ser criado)', async () => {
+      const { items, pluggy } = setup()
+      items.findById.mockResolvedValue(itemRow({ status: 'WAITING_USER_INPUT' }))
+      pluggy.getItem.mockResolvedValue(remote('UPDATED'))
+
+      await newService({ items, pluggy }).checkStatus('user-1', 'item-1')
+
+      expect(pluggy.refreshItem).not.toHaveBeenCalled()
+    })
   })
 
   it('manualSync: o update do upsert nunca leva o nome — renomear a conta não é desfeito pelo sync', async () => {

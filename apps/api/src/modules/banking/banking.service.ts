@@ -19,6 +19,10 @@ import { PluggyClient } from './pluggy/pluggy.client'
 import { PluggyItemRepository } from './pluggy-item.repository'
 
 const MANUAL_SYNC_COOLDOWN_MS = 15 * 60 * 1000
+const REFRESH_POLL_MS = 3_000
+const REFRESH_WAIT_MS = 40_000
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 const NOT_FOUND = () => new NotFoundError('BANK_CONNECTION_NOT_FOUND', 'Conexão bancária não encontrada.')
 
@@ -102,7 +106,7 @@ export class BankingService {
 
     const wasAlreadyUpdated = item.status === 'UPDATED'
     if (remote.status === 'UPDATED' && !wasAlreadyUpdated) {
-      await this.runSync(userId, item.id)
+      await this.runSync(userId, item.id, false)
     }
 
     const refreshed = await this.items.findById(userId, id)
@@ -167,9 +171,37 @@ export class BankingService {
     return this.connect()
   }
 
-  private async runSync(userId: string, itemId: string): Promise<SyncResult> {
+  private async refreshFromBank(userId: string, item: PluggyItemRow): Promise<void> {
+    try {
+      let remote = await this.pluggy.refreshItem(item.pluggyItemId)
+      const deadline = Date.now() + REFRESH_WAIT_MS
+      while (remote.status === 'UPDATING' && Date.now() < deadline) {
+        await sleep(REFRESH_POLL_MS)
+        remote = await this.pluggy.getItem(item.pluggyItemId)
+      }
+      if (remote.status === 'UPDATING') {
+        this.logger.warn(`Item ${item.id} ainda atualizando no Pluggy; lendo o que ele já tem.`)
+        return
+      }
+      await this.items.update(userId, item.id, {
+        status: remote.status,
+        consentExpiresAt: remote.consentExpiresAt ? new Date(remote.consentExpiresAt) : null,
+        lastErrorCode: remote.error?.code ?? null,
+      })
+      if (remote.status !== 'UPDATED') {
+        this.logger.warn(
+          `Item ${item.id} não atualizou no banco (status ${remote.status}); lendo o que o Pluggy já tem.`,
+        )
+      }
+    } catch (error) {
+      this.logger.warn(`Não foi possível pedir a atualização do item ${item.id} ao Pluggy: ${describeError(error)}`)
+    }
+  }
+
+  private async runSync(userId: string, itemId: string, refresh = true): Promise<SyncResult> {
     const item = await this.items.findById(userId, itemId)
     if (!item) throw NOT_FOUND()
+    if (refresh) await this.refreshFromBank(userId, item)
 
     const selfPerson = await this.people.findSelf(userId)
     if (!selfPerson) throw new DomainError('SELF_PERSON_NOT_FOUND', 'Pessoa "Eu" não encontrada.', 500)

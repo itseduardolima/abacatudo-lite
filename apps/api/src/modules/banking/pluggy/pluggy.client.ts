@@ -49,6 +49,10 @@ export class PluggyClient {
     return this.request('GET', `/items/${pluggyItemId}`, pluggyItemSchema)
   }
 
+  refreshItem(pluggyItemId: string): Promise<PluggyItem> {
+    return this.request('PATCH', `/items/${pluggyItemId}`, pluggyItemSchema, {})
+  }
+
   // Desconectar (8.5): "revoga o Item no Pluggy, best effort + retry" (03-regras-negocio) — o retry/backoff
   // já vem de fetchWithRetry, mesmo caminho de toda outra chamada. Sem corpo esperado na resposta, então
   // não passa pelo `request` (que sempre parseia JSON contra um schema).
@@ -122,7 +126,7 @@ export class PluggyClient {
   }
 
   private async request<T>(
-    method: 'GET' | 'POST',
+    method: 'GET' | 'POST' | 'PATCH',
     pathOrUrl: string,
     schema: z.ZodType<T>,
     body?: unknown,
