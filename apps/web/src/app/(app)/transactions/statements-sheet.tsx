@@ -5,6 +5,7 @@ import { useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { MoneyText } from '@/components/finance/MoneyText'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 export function StatementsSheet({
   statements,
@@ -54,7 +55,12 @@ export function StatementsSheet({
             : 'Fatura aberta: o valor pode mudar até o fechamento. Nada é enviado sozinho.'}
         </p>
 
-        {isLoading && <p className="text-text">Carregando…</p>}
+        {isLoading && (
+          <div aria-hidden className="flex flex-col gap-5">
+            <Skeleton className="h-28 rounded-card" />
+            <Skeleton className="h-28 rounded-card" />
+          </div>
+        )}
         {isError && <InlineAlert>Não foi possível montar as mensagens agora.</InlineAlert>}
         {!isLoading && !isError && statements.length === 0 && (
           <p className="text-text">Ninguém tem compras neste mês.</p>

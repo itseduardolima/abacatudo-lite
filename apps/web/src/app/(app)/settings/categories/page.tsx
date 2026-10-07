@@ -3,6 +3,7 @@
 import { BackIcon, IconButton } from '@/components/ui/IconButton'
 import { categoryIcon } from '@/lib/utils/category-icon'
 import { useCategoriesPage } from './use-categories-page'
+import { ListSkeleton } from '@/components/ui/Skeleton'
 
 // Lista fixa por seed, só leitura (03-regras-negocio § Categorias e regras) — sem criar/renomear/arquivar
 // pelo cliente. Mesmo padrão de linha das outras telas de Configurar (ícone + nome, sem card, divisória
@@ -19,7 +20,7 @@ export default function CategoriesPage() {
         <h1 className="display-number text-[2rem] text-ink">Categorias</h1>
       </div>
 
-      {isLoadingCategories && <p className="text-text">Carregando…</p>}
+      {isLoadingCategories && <ListSkeleton rows={6} />}
 
       {categories.length > 0 && (
         <ul className="flex flex-col">

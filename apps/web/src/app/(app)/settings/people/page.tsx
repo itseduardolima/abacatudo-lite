@@ -7,6 +7,7 @@ import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Input } from '@/components/ui/Input'
 import { personAvatarClass, personInitial } from '@/lib/utils/person-avatar'
 import { usePeoplePage } from './use-people-page'
+import { ListSkeleton } from '@/components/ui/Skeleton'
 
 // Layout segue o protótipo (06-pessoas: linha com avatar + nome, sem card por item, divisória fina; campo
 // de adicionar sempre visível no fim da lista).
@@ -25,7 +26,7 @@ export default function PeoplePage() {
         <h1 className="display-number text-[2rem] text-ink">Pessoas</h1>
       </div>
 
-      {isLoadingPeople && <p className="text-text">Carregando…</p>}
+      {isLoadingPeople && <ListSkeleton />}
 
       {people.length > 0 && (
         <ul className="flex flex-col">

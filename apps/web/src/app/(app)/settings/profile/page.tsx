@@ -5,6 +5,7 @@ import { BackIcon, IconButton } from '@/components/ui/IconButton'
 import { Input } from '@/components/ui/Input'
 import { PasswordInput } from '@/components/ui/PasswordInput'
 import { useProfilePage } from './use-profile-page'
+import { FormSkeleton } from '@/components/ui/Skeleton'
 
 export default function ProfilePage() {
   const {
@@ -31,7 +32,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {isLoading && <p className="text-text">Carregando…</p>}
+      {isLoading && <FormSkeleton fields={3} />}
 
       {!isLoading && (
         <>

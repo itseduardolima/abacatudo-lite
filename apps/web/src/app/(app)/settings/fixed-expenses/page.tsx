@@ -9,6 +9,7 @@ import { MoneyInput } from '@/components/ui/MoneyInput'
 import { MoneyText } from '@/components/finance/MoneyText'
 import { FixedExpenseActionsSheet } from './fixed-expense-actions-sheet'
 import { useFixedExpensesPage } from './use-fixed-expenses-page'
+import { ListSkeleton } from '@/components/ui/Skeleton'
 
 export default function FixedExpensesPage() {
   const {
@@ -43,7 +44,7 @@ export default function FixedExpensesPage() {
         </div>
       </div>
 
-      {isLoading && <p className="text-text">Carregando…</p>}
+      {isLoading && <ListSkeleton />}
 
       {!isLoading && fixedExpenses.length === 0 && !isFormOpen && <p className="text-text">Nenhum gasto fixo ainda.</p>}
 

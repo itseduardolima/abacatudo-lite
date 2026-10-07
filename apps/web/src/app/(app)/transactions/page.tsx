@@ -15,6 +15,8 @@ import { formatMonthName } from '@/lib/utils/format-month'
 import { personAvatarClass, personInitial } from '@/lib/utils/person-avatar'
 import { useStatementsSheet } from './use-statements-sheet'
 import { useTransactionsPage } from './use-transactions-page'
+import { ListSkeleton } from '@/components/ui/Skeleton'
+import { HeroSkeleton } from '../home-skeleton'
 
 const SEGMENTS: { value: Segment; label: string }[] = [
   { value: 'all', label: 'Todas' },
@@ -107,7 +109,12 @@ function TransactionsContent() {
         )}
       </div>
 
-      {isLoading && <p className="text-text">Carregando…</p>}
+      {isLoading && (
+        <>
+          <HeroSkeleton />
+          <ListSkeleton rows={5} />
+        </>
+      )}
 
       {!isLoading && cardAccounts.length === 0 && (
         <p className="text-text">Nenhum cartão de crédito ainda. Crie um em Contas.</p>

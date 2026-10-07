@@ -13,6 +13,7 @@ import { BankAvatar } from '@/components/finance/BankAvatar'
 import { formatAccountType } from '@/lib/utils/format-account-type'
 import { formatSyncedAt } from '@/lib/utils/format-date'
 import { useAccountsPage } from './use-accounts-page'
+import { ListSkeleton } from '@/components/ui/Skeleton'
 
 export default function AccountsPage() {
   const {
@@ -83,7 +84,7 @@ export default function AccountsPage() {
       {connectError && <InlineAlert>{connectError}</InlineAlert>}
       {syncError && <InlineAlert>{syncError}</InlineAlert>}
 
-      {isLoadingAccounts && <p className="text-text">Carregando…</p>}
+      {isLoadingAccounts && <ListSkeleton rows={3} avatarClassName="h-11 w-11" />}
 
       {!isLoadingAccounts && accounts.length === 0 && (
         <p className="text-text">Nenhuma conta ainda. Conecte um banco abaixo.</p>

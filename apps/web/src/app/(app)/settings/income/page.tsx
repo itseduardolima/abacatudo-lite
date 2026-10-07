@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { BackIcon, IconButton } from '@/components/ui/IconButton'
 import { MoneyInput } from '@/components/ui/MoneyInput'
 import { useIncomePage } from './use-income-page'
+import { FormSkeleton } from '@/components/ui/Skeleton'
 
 export default function IncomePage() {
   const { isLoading, register, errors, onSubmit, isSaving, isDirty, saved } = useIncomePage()
@@ -20,7 +21,7 @@ export default function IncomePage() {
         </div>
       </div>
 
-      {isLoading && <p className="text-text">Carregando…</p>}
+      {isLoading && <FormSkeleton />}
 
       {!isLoading && (
         <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>

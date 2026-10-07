@@ -7,6 +7,7 @@ import { InlineAlert } from '@/components/ui/InlineAlert'
 import { PasswordInput } from '@/components/ui/PasswordInput'
 import { QrCode } from './qr-code'
 import { useSecurityPage } from './use-security-page'
+import { FormSkeleton } from '@/components/ui/Skeleton'
 
 export default function SecurityPage() {
   const {
@@ -41,7 +42,7 @@ export default function SecurityPage() {
         </div>
       </div>
 
-      {isLoading && <p className="text-text">Carregando…</p>}
+      {isLoading && <FormSkeleton fields={0} />}
       {ruleError && <InlineAlert>{ruleError}</InlineAlert>}
 
       {!isLoading && step === 'status' && (
