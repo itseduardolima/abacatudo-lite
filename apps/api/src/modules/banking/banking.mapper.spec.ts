@@ -33,6 +33,32 @@ describe('resolveKind', () => {
     expect(resolveKind(tx({ type: 'CREDIT', description: 'COMPRA PARCELADA INTER' }), true)).toBe('REFUND')
   })
 
+  it('parcela do parcelamento do Inter ("PARC PARCELAMEN INTER") é cobrança, mesmo com categoria de pagamento', () => {
+    const plan = (installmentNumber: number | null) =>
+      tx({
+        type: 'DEBIT',
+        description: 'PARC PARCELAMEN INTER',
+        operationType: 'OPERACOES_CREDITO_CONTRATADAS_CARTAO',
+        category: 'Credit card payment',
+        categoryId: '05100000',
+        creditCardMetadata: { installmentNumber, totalInstallments: 4 },
+      })
+    expect(resolveKind(plan(1), true)).toBe('EXPENSE')
+    expect(resolveKind(plan(null), true)).toBe('CARD_PAYMENT')
+    expect(
+      resolveKind(
+        tx({
+          type: 'DEBIT',
+          description: 'PARCELAMENTO FATURA',
+          operationType: 'OPERACOES_CREDITO_CONTRATADAS_CARTAO',
+          categoryId: '05100000',
+          creditCardMetadata: { installmentNumber: 2, totalInstallments: 6 },
+        }),
+        true,
+      ),
+    ).toBe('EXPENSE')
+  })
+
   it('CREDIT em movimentação é dinheiro entrando de verdade (INCOME), não estorno', () => {
     expect(resolveKind(tx({ type: 'CREDIT' }), false)).toBe('INCOME')
   })

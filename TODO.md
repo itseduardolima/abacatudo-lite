@@ -1302,3 +1302,7 @@ typecheck/lint/build limpos).
 
 - [x] Parcelas estimadas de volta, corrigidas: dia em horário de Brasília, sem estimar compra cancelada nem
       grupo que já tem parcela no ciclo aberto, com a parcela e os juros do parcelamento do Inter (2026-10-07).
+
+- [x] Parcelamento do Inter: a linha com parcela numerada ("PARC PARCELAMEN INTER", tipo de operação de crédito
+      contratada no cartão) é cobrança, não pagamento de fatura; o provisório pendente, sem número, continua fora
+      do total (2026-10-07).
