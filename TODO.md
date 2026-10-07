@@ -1309,3 +1309,6 @@ typecheck/lint/build limpos).
 
 - [x] Fatura: "Falta pagar da fatura anterior" e "Total a pagar" à parte (Mercado Pago: 11,88 e 482,31), fora do
       Meu e do orçamento (2026-10-07).
+
+- [x] Sincronizar pede ao Pluggy para atualizar o item no banco antes de ler (espera até 40 s, segue com o
+      cache se falhar) (2026-10-07).

@@ -137,6 +137,11 @@ Account
 
 - **Gatilhos**: diário (job), manual ("atualizar agora", 1 por conexão a cada
   15 min, `429 SYNC_TOO_RECENT`; o job diário e o `checkStatus` não sofrem o limite), webhook.
+- **Atualização no banco**: antes de ler, o job diário e o "atualizar agora" pedem ao Pluggy que busque dados
+  novos no banco (`PATCH /items/{id}`, só leitura — nunca inicia pagamento) e esperam até 40 s o item sair de
+  `UPDATING`. Sem isso o sync lê só o que o Pluggy já guardou, que pode ter horas. Se o Pluggy recusar ou o item
+  pedir ação do usuário (`LOGIN_ERROR`, `WAITING_USER_INPUT`), o status é gravado e o sync segue com os dados
+  que ele já tem. O `checkStatus` (primeira conexão) não pede atualização.
 - **Idempotência**: upsert por `(accountId, externalId)`. Rodar duas vezes
   não muda nada.
 - **Janela**: primeira conexão traz o histórico que o banco fornecer;
