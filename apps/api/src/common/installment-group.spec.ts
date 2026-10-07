@@ -1,10 +1,16 @@
-import { installmentBaseName, installmentGroupKey, keepCurrentInstallmentsOnly } from './installment-group'
+import {
+  clusterInstallmentKeys,
+  installmentBaseName,
+  installmentGroupKey,
+  keepCurrentInstallmentsOnly,
+} from './installment-group'
 
 interface TestRow {
   id: string
   billId: string | null
   description: string
   occurredAt: Date
+  amountCents: number
   installmentNumber: number | null
   installmentTotal: number | null
 }
@@ -17,6 +23,7 @@ function row(overrides: Partial<TestRow> = {}): TestRow {
     billId: null,
     description: 'Ebn*Playstati',
     occurredAt: OCCURRED_AT,
+    amountCents: 1000,
     installmentNumber: null,
     installmentTotal: null,
     ...overrides,
@@ -166,5 +173,75 @@ describe('installmentBaseName', () => {
 
   it('sem o número da parcela, só tira o marcador do fim (comportamento antigo)', () => {
     expect(installmentBaseName({ description: 'Compra 2/6', installmentTotal: 6 })).toBe('Compra')
+  })
+})
+
+describe('clusterInstallmentKeys', () => {
+  const at = new Date('2026-09-04T12:00:00.000Z')
+  const parcel = (description: string, number: number, total: number, amountCents: number, accountId = 'acc-1') => ({
+    accountId,
+    description,
+    occurredAt: at,
+    installmentNumber: number,
+    installmentTotal: total,
+    amountCents,
+  })
+  const sameGroup = (rows: ReturnType<typeof parcel>[]) => new Set(clusterInstallmentKeys(rows)).size === 1
+
+  it('junta parcelas com descrição truncada e centavos diferentes (10x)', () => {
+    const rows = [
+      parcel('MERCADOLIVRE*PODEROSABLZ', 1, 10, 5336),
+      parcel('MERCADOLIVRE*PODE', 2, 10, 5334),
+      parcel('MERCADOLIVRE*PODE', 3, 10, 5334),
+    ]
+    expect(sameGroup(rows)).toBe(true)
+  })
+
+  it('junta parcelas com descrição truncada (3x)', () => {
+    const rows = [
+      parcel('MERCADOLIVRE*LHSHOOP', 1, 3, 1197),
+      parcel('MERCADOLIVRE*LHSH', 2, 3, 1195),
+      parcel('MERCADOLIVRE*LHSH', 3, 3, 1195),
+    ]
+    expect(sameGroup(rows)).toBe(true)
+  })
+
+  it('mantém separadas duas compras MERCADOLIVRE diferentes com o mesmo total', () => {
+    const rows = [parcel('MERCADOLIVRE*PODEROSABLZ', 1, 10, 5336), parcel('MERCADOLIVRE*LHSHOOP', 1, 10, 5336)]
+    expect(sameGroup(rows)).toBe(false)
+  })
+
+  it('mantém separadas compras com nomes compatíveis mas valores a mais de 2 centavos', () => {
+    const rows = [parcel('MERCADOLIVRE*PODEROSABLZ', 1, 10, 5336), parcel('MERCADOLIVRE*PODE', 1, 10, 6000)]
+    expect(sameGroup(rows)).toBe(false)
+  })
+
+  it('não junta prefixo menor que 8 caracteres', () => {
+    expect(sameGroup([parcel('LOJA', 1, 3, 1000), parcel('LOJA DO ZE', 2, 3, 1000)])).toBe(false)
+  })
+
+  it('não junta contas diferentes nem totais diferentes', () => {
+    expect(
+      sameGroup([parcel('Parcelamento de Compra', 1, 3, 1000), parcel('Parcelamento de Compra', 2, 3, 1000, 'acc-2')]),
+    ).toBe(false)
+    expect(
+      sameGroup([parcel('Parcelamento de Compra', 1, 3, 1000), parcel('Parcelamento de Compra', 2, 4, 1000)]),
+    ).toBe(false)
+  })
+
+  it('mantém o agrupamento de Parcelamento de Compra com nome da loja', () => {
+    const rows = [
+      parcel('Parcelamento de Compra', 2, 3, 1000),
+      parcel('Parcelamento de Compra "Hr Restaurante"', 3, 3, 1000),
+    ]
+    expect(sameGroup(rows)).toBe(true)
+  })
+
+  it('keepCurrentInstallmentsOnly conta só a menor parcela da compra truncada', () => {
+    const rows = [
+      { ...parcel('MERCADOLIVRE*PODEROSABLZ', 1, 10, 5336), billId: null },
+      { ...parcel('MERCADOLIVRE*PODE', 2, 10, 5334), billId: null },
+    ]
+    expect(keepCurrentInstallmentsOnly(rows).map((r) => r.installmentNumber)).toEqual([1])
   })
 })
