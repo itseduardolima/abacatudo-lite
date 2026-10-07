@@ -119,7 +119,10 @@ Detalhe e números em [07-integracao-bancaria](./07-integracao-bancaria.md) § F
   fatura (`CARD_PAYMENT`) quita primeiro a fatura fechada, e só a **sobra** (pagamentos desde o último
   fechamento − total da fatura fechada, se positiva) abate a aberta, no "Meu" (o "Não é meu" não muda). O total da
   fatura fechada vem da última fatura fechada que o Pluggy manda;
-  sem nenhum dos dois, não abate nada. Vale na Início e na tela da fatura, em todos os cartões. Cartão
+  sem nenhum dos dois, não abate nada. Se os pagamentos não cobrem a fatura fechada, o que falta dela
+  (`previousBillRemainingCents`) aparece à parte na tela da fatura, com o **total a pagar** (`payableCents` = total
+  aberto + o que falta da anterior); não entra em "Meu", no orçamento nem no total do cartão, porque são compras do
+  mês anterior e já contaram lá. Vale na Início e na tela da fatura, em todos os cartões. Cartão
   com `closingDay` (ex.: Pic Pay, que o Pluggy não manda fatura): só lançamento a partir do último fechamento é
   fatura aberta. O próprio dia de fechamento já conta, à meia-noite de Brasília (como no Nubank); parcela vale
   pela data de vencimento, não pela da compra. Compra à vista **pendente e sem fatura** entra na aberta mesmo com

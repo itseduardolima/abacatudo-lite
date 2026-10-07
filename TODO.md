@@ -1306,3 +1306,6 @@ typecheck/lint/build limpos).
 - [x] Parcelamento do Inter: a linha com parcela numerada ("PARC PARCELAMEN INTER", tipo de operação de crédito
       contratada no cartão) é cobrança, não pagamento de fatura; o provisório pendente, sem número, continua fora
       do total (2026-10-07).
+
+- [x] Fatura: "Falta pagar da fatura anterior" e "Total a pagar" à parte (Mercado Pago: 11,88 e 482,31), fora do
+      Meu e do orçamento (2026-10-07).
