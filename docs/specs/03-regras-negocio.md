@@ -248,6 +248,10 @@ sistema, por uma **mensagem de texto que o User gera e envia manualmente**
     banco já manda todas as parcelas (Nubank), nada é estimado. A pessoa e a divisão da compra valem para as
     estimadas. Só entram em mês **posterior ao atual**. Sempre marcadas **"estimada"** (na tela, com o
     quanto da fatura é estimado, e no texto da conta) e podem errar poucos centavos ou dias.
+    A conta dos dias usa a data à meia-noite de Brasília (03:00 UTC), como as parcelas chegam do banco. Na
+    fatura aberta, compra que já tem parcela real no ciclo não ganha outra estimada (uma parcela por compra por
+    fatura), compra **cancelada** não é estimada (nem as parcelas que o banco já faturou servem de base) e a
+    linha "PARC PARCELAMEN" e os juros do parcelamento do Inter contam como parcelas da compra.
   - **Mês da parcela = mês de `date`** em `America/Manaus` (mesma regra de "Formato dos dados", spec 07); não
     depende de `closingDay`/`dueDay`.
   - Mesmo formato e mesma invariante da fatura atual (`Fatura = Meu + Não é meu`); a pessoa da compra vale para

@@ -25,6 +25,13 @@ describe('addMonthsKeepingDay', () => {
   })
 })
 
+describe('addMonthsKeepingDay com a data à meia-noite de Brasília', () => {
+  it('parcela do dia 1 às 03:00 UTC continua no dia 1 do mês seguinte, e não no dia 30 do anterior', () => {
+    expect(addMonthsKeepingDay(new Date('2026-10-01T03:00:00.000Z'), 1).toISOString()).toBe('2026-11-01T03:00:00.000Z')
+    expect(addMonthsKeepingDay(new Date('2026-01-31T03:00:00.000Z'), 1).toISOString()).toBe('2026-02-28T03:00:00.000Z')
+  })
+})
+
 describe('estimateInstallments', () => {
   it('cria k+1..N com o mesmo valor, pessoa e divisão, um mês depois do outro', () => {
     const estimated = estimateInstallments([

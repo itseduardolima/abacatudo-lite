@@ -1,5 +1,3 @@
-import { dateKey } from '../../common/date/timezone'
-
 export interface InstallmentSource {
   groupKey: string
   number: number
@@ -16,11 +14,24 @@ const MAX_INSTALLMENTS = 120
 
 // Soma meses mantendo o dia do vencimento (limitado ao fim do mês: 31/01 + 1 mês = 28/02). Datas de parcela
 // são guardadas ao meio-dia UTC (dayFromDateString), então o dia de Manaus é o mesmo do UTC.
+const BRASILIA_OFFSET_MS = 3 * 60 * 60 * 1000
+
 export function addMonthsKeepingDay(date: Date, months: number): Date {
-  const [year = 1970, month = 1, day = 1] = dateKey(date).split('-').map(Number)
-  const target = new Date(Date.UTC(year, month - 1 + months, 1, 12))
+  const local = new Date(date.getTime() - BRASILIA_OFFSET_MS)
+  const year = local.getUTCFullYear()
+  const month = local.getUTCMonth()
+  const day = local.getUTCDate()
+  const target = new Date(Date.UTC(year, month + months, 1))
   const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate()
-  return new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth(), Math.min(day, lastDay), 12))
+  return new Date(
+    Date.UTC(
+      target.getUTCFullYear(),
+      target.getUTCMonth(),
+      Math.min(day, lastDay),
+      date.getUTCHours(),
+      date.getUTCMinutes(),
+    ),
+  )
 }
 
 // Parcelas estimadas (03-regras-negocio § Fatura prevista): nem todo banco manda as parcelas futuras (BB e

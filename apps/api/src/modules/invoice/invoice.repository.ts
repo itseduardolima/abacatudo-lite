@@ -157,7 +157,7 @@ export class InvoiceRepository {
     const rows = await this.prisma.transaction.findMany({
       where: {
         userId,
-        kind: 'EXPENSE',
+        kind: { in: ['EXPENSE', 'CARD_PAYMENT'] },
         installmentNumber: { not: null },
         installmentTotal: { not: null },
         installmentDueAt: { not: null },
@@ -165,28 +165,33 @@ export class InvoiceRepository {
       },
       include: { splits: { select: { personId: true, amountCents: true } } },
     })
-    return rows.flatMap((row) =>
-      row.installmentNumber == null || row.installmentTotal == null || row.installmentDueAt == null
-        ? []
-        : [
-            {
-              groupKey: installmentGroupKey({
-                description: row.description,
-                occurredAt: row.occurredAt,
-                installmentTotal: row.installmentTotal,
-                installmentNumber: row.installmentNumber,
-              }),
-              number: row.installmentNumber,
-              total: row.installmentTotal,
-              dueAt: row.installmentDueAt,
-              amountCents: row.amountCents,
-              kind: 'EXPENSE' as const,
-              personId: row.personId,
-              splits: row.splits,
-              label: row.displayName ?? row.merchant ?? purchaseName(row),
-            },
-          ],
-    )
+    const keys = clusterInstallmentKeys(rows)
+    const cancelledGroups = new Set(rows.flatMap((row, index) => (row.cancelledAt && keys[index] ? [keys[index]] : [])))
+    return rows.flatMap((row, index) => {
+      const groupKey = keys[index]
+      if (
+        row.installmentNumber == null ||
+        row.installmentTotal == null ||
+        row.installmentDueAt == null ||
+        !groupKey ||
+        cancelledGroups.has(groupKey)
+      ) {
+        return []
+      }
+      return [
+        {
+          groupKey,
+          number: row.installmentNumber,
+          total: row.installmentTotal,
+          dueAt: row.installmentDueAt,
+          amountCents: row.amountCents,
+          kind: 'EXPENSE' as const,
+          personId: row.personId,
+          splits: row.splits,
+          label: row.displayName ?? row.merchant ?? purchaseName(row),
+        },
+      ]
+    })
   }
 
   async findLastInstallmentDueAt(userId: string, accountId: string): Promise<Date | null> {

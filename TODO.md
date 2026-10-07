@@ -1299,3 +1299,6 @@ typecheck/lint/build limpos).
 
 - [x] Fatura aberta: compra à vista pendente e sem fatura entra mesmo antes do fechamento (Pix no crédito do
       Nubank), na fatura, na lista e na mensagem de conta (2026-10-07).
+
+- [x] Parcelas estimadas de volta, corrigidas: dia em horário de Brasília, sem estimar compra cancelada nem
+      grupo que já tem parcela no ciclo aberto, com a parcela e os juros do parcelamento do Inter (2026-10-07).

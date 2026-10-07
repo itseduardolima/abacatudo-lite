@@ -251,7 +251,10 @@ export class InvoiceService {
     const from = lastClosingCutoff(account.closingDay)
     const until = nextClosingCutoff(account.closingDay)
     const sources = await this.repo.findInstallmentSources(account.userId, account.id)
-    return estimateInstallments(sources).filter((item) => item.dueAt >= from && item.dueAt < until)
+    const groupsInOpenCycle = new Set(sources.filter((source) => source.dueAt >= from).map((source) => source.groupKey))
+    return estimateInstallments(sources).filter(
+      (item) => item.dueAt >= from && item.dueAt < until && !groupsInOpenCycle.has(item.groupKey),
+    )
   }
 
   private async lastForecastMonth(account: AccountWithPluggyItem): Promise<string | null> {
