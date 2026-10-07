@@ -30,7 +30,7 @@ export function PaceHeroCard({ pace }: { pace: BudgetPace }) {
       <div className="flex items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
           <div>
-            <p className="text-sm text-on-inverse-muted">Cartões (só meus)</p>
+            <p className="text-sm text-on-inverse-muted">Cartões</p>
             <p className="text-base font-semibold text-on-inverse">
               <MoneyText cents={pace.cardsMineCents} className="!text-on-inverse" />
             </p>
