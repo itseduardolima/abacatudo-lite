@@ -187,6 +187,24 @@ Regras:
 Pagamento de fatura nunca vira gasto em dobro: as compras entram uma a uma
 pelo cartão e a linha `CARD_PAYMENT` do lado do cartão é excluída do gasto.
 
+## Compra cancelada
+
+O Pluggy às vezes mantém parcelas "fantasma" de uma compra que o banco já
+cancelou (ficam `PENDING`, sem `billId`, e inflam a fatura aberta). O usuário
+pode marcar a compra como cancelada (`Transaction.cancelledAt`), e reverter.
+
+- **Escopo da ação = uma compra.** Parcelada: todas as parcelas da mesma conta e
+  do mesmo grupo (`installmentGroupKey`) ainda sem `billId`; parcela já faturada
+  não muda. À vista: só a própria linha. Só EXPENSE/REFUND de cartão.
+- **Fora de toda conta:** fatura aberta e prevista, "Meu"/"Não é meu", orçamento
+  e ritmo, relatórios, assinaturas, economia, mensagem de conta e sugestão de
+  categoria da IA ignoram linha cancelada.
+- **Só a lista de lançamentos mostra:** a linha aparece riscada, com o selo
+  "Cancelada", pra poder reativar.
+- **O sync não mexe:** `upsertTransaction` nunca escreve `cancelledAt`, então um
+  novo sync mantém a marca.
+- Reversível: `PATCH /transactions/:id/cancellation` com `{ cancelled: false }`.
+
 ## Só a minha parte (gasto de terceiros no meu cartão)
 
 Decisão de produto: **o sistema não controla dívida da família.** Não existe

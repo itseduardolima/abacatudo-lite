@@ -1296,3 +1296,7 @@ typecheck/lint/build limpos).
 - [x] Conta de benefício removida: `Account.isBenefitAccount`, `BudgetMonth.benefitCents`, `setBenefitAccount`,
       `/movements/{report,spending,habits,pix,pix-recipients}`, telas `/movements/benefit`, card da Início e campo de
       renda de benefícios; teto = renda − fixos − poupança; lançamento de benefício é movimentação comum (2026-10-06).
+
+- [x] Cancelar compra: `Transaction.cancelledAt`, `PATCH /transactions/:id/cancellation` (grupo de parcelas sem
+      fatura), fora de fatura, orçamento, relatórios e extratos, linha riscada com selo na Fatura, reversível
+      (2026-10-07).
