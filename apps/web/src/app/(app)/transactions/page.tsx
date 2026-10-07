@@ -201,6 +201,18 @@ function TransactionsContent() {
               Já abatido <MoneyText cents={invoice.advancePaidCents} className="!text-xs" /> de pagamento adiantado.
             </p>
           )}
+          {invoice.previousBillRemainingCents > 0 && (
+            <div className="rounded-card bg-surface px-4 py-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-text">Falta pagar da fatura anterior</span>
+                <MoneyText cents={invoice.previousBillRemainingCents} />
+              </div>
+              <div className="mt-1.5 flex items-center justify-between gap-3">
+                <span className="font-semibold text-ink">Total a pagar</span>
+                <MoneyText cents={invoice.payableCents} className="font-bold" />
+              </div>
+            </div>
+          )}
           {invoice.estimatedCents > 0 && (
             <p className="text-xs text-muted">
               Inclui <MoneyText cents={invoice.estimatedCents} className="!text-xs" /> de parcelas estimadas (o banco
