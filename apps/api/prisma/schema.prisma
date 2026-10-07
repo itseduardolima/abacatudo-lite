@@ -272,6 +272,7 @@ model Transaction {
   // O sync nunca escreve aqui.
   displayName                  String?
   billId                       String?
+  cancelledAt                  DateTime?
   createdAt                    DateTime          @default(now())
   updatedAt                    DateTime          @updatedAt
 

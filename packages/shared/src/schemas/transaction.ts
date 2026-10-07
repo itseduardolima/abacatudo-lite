@@ -31,6 +31,7 @@ export const transactionSchema = z
     installmentDueAt: z.string().datetime().nullable(),
     // Apelido da compra ("Air fryer"), usado na mensagem de conta; null usa o nome do banco.
     displayName: z.string().nullable(),
+    cancelledAt: z.string().datetime().nullable(),
     createdAt: z.string().datetime(),
     // Vazio quando a transação não está dividida (personId sozinho decide o dono) — preenchido só depois
     // de um PUT .../split (03-regras-negocio § Só a minha parte).
@@ -65,6 +66,9 @@ export const updateTransactionDisplayNameInputSchema = z
   })
   .strict()
 export type UpdateTransactionDisplayNameInput = z.infer<typeof updateTransactionDisplayNameInputSchema>
+
+export const updateTransactionCancellationInputSchema = z.object({ cancelled: z.boolean() }).strict()
+export type UpdateTransactionCancellationInput = z.infer<typeof updateTransactionCancellationInputSchema>
 
 // Corrigir a categoria de uma transação (03-regras-negocio § Categorias e regras). Mesma lógica de
 // alwaysForMerchant do endpoint de pessoa, na mesma Rule do estabelecimento.

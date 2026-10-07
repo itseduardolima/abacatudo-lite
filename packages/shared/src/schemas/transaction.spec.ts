@@ -1,6 +1,7 @@
 import {
   createTransactionInputSchema,
   transactionSchema,
+  updateTransactionCancellationInputSchema,
   updateTransactionCategoryInputSchema,
   updateTransactionDisplayNameInputSchema,
   updateTransactionPersonInputSchema,
@@ -25,6 +26,7 @@ const VALID = {
   installmentTotal: null,
   installmentDueAt: null,
   displayName: null,
+  cancelledAt: null,
   createdAt: '2026-09-21T12:00:00.000Z',
   splits: [],
 }
