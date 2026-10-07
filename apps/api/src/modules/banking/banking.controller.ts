@@ -1,10 +1,5 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common'
-import type {
-  BankConnection,
-  ConnectBankResponse,
-  RegisterBankItemResponse,
-  SyncResult,
-} from '@gastos/shared'
+import type { BankConnection, ConnectBankResponse, RegisterBankItemResponse, SyncResult } from '@gastos/shared'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { BankingService } from './banking.service'
 import { RegisterBankItemDto } from './dto/register-bank-item.dto'

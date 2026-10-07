@@ -18,7 +18,7 @@ export function middleware(request: NextRequest) {
     "img-src 'self' data:",
     "font-src 'self'",
     "connect-src 'self'",
-    "frame-src https://*.pluggy.ai",
+    'frame-src https://*.pluggy.ai',
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

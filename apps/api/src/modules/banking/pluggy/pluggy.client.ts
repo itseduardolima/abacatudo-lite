@@ -157,7 +157,9 @@ export class PluggyClient {
           continue
         }
         if (response.status >= 500) {
-          this.logger.warn(`${init.method} ${safeUrl(url)}: HTTP ${response.status} (tentativa ${attempt}/${MAX_ATTEMPTS})`)
+          this.logger.warn(
+            `${init.method} ${safeUrl(url)}: HTTP ${response.status} (tentativa ${attempt}/${MAX_ATTEMPTS})`,
+          )
           if (attempt === MAX_ATTEMPTS) throw new PluggyUnavailableError()
           await sleep(2 ** attempt * 200)
           continue
@@ -174,8 +176,11 @@ export class PluggyClient {
       } catch (error) {
         clearTimeout(timer)
         if (error instanceof DomainError) throw error
-        const cause = error instanceof Error ? (error.cause as Error | undefined)?.message ?? error.message : String(error)
-        this.logger.warn(`${init.method} ${safeUrl(url)}: falha de rede/timeout (${cause}) (tentativa ${attempt}/${MAX_ATTEMPTS})`)
+        const cause =
+          error instanceof Error ? ((error.cause as Error | undefined)?.message ?? error.message) : String(error)
+        this.logger.warn(
+          `${init.method} ${safeUrl(url)}: falha de rede/timeout (${cause}) (tentativa ${attempt}/${MAX_ATTEMPTS})`,
+        )
         if (attempt === MAX_ATTEMPTS) throw new PluggyUnavailableError()
         await sleep(2 ** attempt * 200)
       }
