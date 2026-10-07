@@ -27,6 +27,7 @@ export class InsightRepository {
     const rows = await this.prisma.transaction.findMany({
       where: {
         userId,
+        cancelledAt: null,
         kind: { in: ['EXPENSE', 'REFUND'] },
         account: { type: 'CREDIT_CARD' },
         OR: [
@@ -66,6 +67,7 @@ export class InsightRepository {
     const rows = await this.prisma.transaction.findMany({
       where: {
         userId,
+        cancelledAt: null,
         kind: 'EXPENSE',
         installmentTotal: null,
         occurredAt: { gte: since },

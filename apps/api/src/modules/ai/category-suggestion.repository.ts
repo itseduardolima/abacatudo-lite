@@ -27,6 +27,7 @@ export class CategorySuggestionRepository {
     return this.prisma.transaction.findMany({
       where: {
         userId,
+        cancelledAt: null,
         kind: 'EXPENSE',
         account: { type: 'CREDIT_CARD' },
         categoryId: null,
