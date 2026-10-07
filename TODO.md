@@ -1055,10 +1055,6 @@ TABLE ... OWNER TO gastos`), e o `migrate dev` acusa "drift" nesse caso — usar
   - [x] Web: nota "inclui R$ X estimados" e seção "Parcelas estimadas" na Fatura; textos da Início. Falta conferir ao
         vivo com BB e Pic Pay
 
-- [x] Parcelas estimadas removidas (decisão de produto): fatura, previsão e mensagem de conta usam só as parcelas que o Pluggy
-      já enviou; saiu `estimateInstallments`, `estimatedCents`, `GET /invoice/estimates` e a seção "Parcelas estimadas" da
-      Fatura. Banco que não manda as futuras (BB, Pic Pay) mostra menos nos meses futuros (limitação aceita, spec 03)
-
 ### Bugs achados só ao rodar de verdade (e corrigidos)
 
 - Parcelas estimadas duplicadas no BB: a descrição do BB traz o marcador no meio (`RAMSONS STUDI PARC 05/12

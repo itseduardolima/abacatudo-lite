@@ -238,17 +238,23 @@ sistema, por uma **mensagem de texto que o User gera e envia manualmente**
 
 - **Fatura prevista (meses futuros)**: a Home e a tela da Fatura navegam por mês (◀ ▶). Um mês **posterior ao
   atual** mostra a fatura **prevista** daquele cartão:
-  - **Só parcelas que o banco já enviou** (`installment`, `PENDING`, `date` no mês). Nada é estimado nem projetado:
-    compra à vista futura ainda não existe, assinatura recorrente não é projetada e parcela que o banco ainda não
-    mandou não aparece. Banco que não expõe as parcelas futuras (BB e Pic Pay só mandam a parcela quando ela cai
-    na fatura) simplesmente mostra menos nos meses futuros: limitação conhecida e aceita.
+  - **Parcelas lançadas pelo banco** (`installment`, `PENDING`, `date` no mês) **mais parcelas estimadas**. Compra à
+    vista futura ainda não existe, e assinatura recorrente não é projetada.
+  - **Parcela estimada** (nem todo banco expõe as futuras: BB e Pic Pay só mandam a parcela quando ela cai na
+    fatura): para cada compra parcelada cuja última parcela conhecida é `k` de `N` (`k < N`), criam-se as
+    parcelas `k+1..N` com o **mesmo valor** e a **mesma data de vencimento, mês a mês** a partir da última
+    conhecida (dia limitado ao fim do mês). Nunca é gravada: é recalculada a cada consulta. Quando o banco
+    lança a parcela de verdade, ela vira a referência (`k` sobe) e a estimada some sozinha, sem duplicar; se o
+    banco já manda todas as parcelas (Nubank), nada é estimado. A pessoa e a divisão da compra valem para as
+    estimadas. Só entram em mês **posterior ao atual**. Sempre marcadas **"estimada"** (na tela, com o
+    quanto da fatura é estimado, e no texto da conta) e podem errar poucos centavos ou dias.
   - **Mês da parcela = mês de `date`** em `America/Manaus` (mesma regra de "Formato dos dados", spec 07); não
     depende de `closingDay`/`dueDay`.
   - Mesmo formato e mesma invariante da fatura atual (`Fatura = Meu + Não é meu`); a pessoa da compra vale para
     todas as parcelas do grupo (ver "Atribuição de pessoa"). Sem saldo anterior, sem `CARD_PAYMENT`.
   - Rotulada **"Prevista"**. **Nunca** entra no ritmo, no orçamento, no "Meu em [mês]" da Home nem em relatório.
   - **Horizonte**: até o mês da última parcela existente **em qualquer cartão**; a
-    seta ▶ só habilita até lá (última parcela que o banco enviou) e anda igual para todos os cartões
+    seta ▶ só habilita até lá (contando as estimadas) e anda igual para todos os cartões
     (o cartão sem parcela naquele mês mostra fatura zerada). A seta ◀ para no mês
     atual (não guardamos histórico de faturas fechadas).
 - **Split** entre self e outras Persons conta para o "Meu" só a fatia do
@@ -272,7 +278,7 @@ e não registra se foi enviado, pago ou recebido.
   **fatia da Person**.
 - **Qual fatura**: a **aberta** (a mesma da tela Fatura), sem o saldo da fatura
   já fechada (a composição dele não é atribuível a pessoas). Mês futuro usa a
-  fatura prevista (só parcelas já enviadas pelo banco) e sai marcado como previsão. Como a
+  fatura prevista (parcelas lançadas e estimadas, estas marcadas) e sai marcado como previsão. Como a
   fatura aberta muda até o fechamento, o valor enviado pode diferir do final.
 - **Conteúdo**: só o total, cada compra com o valor e a parcela `n/N` (a
   última vira `n/N - última`), uma seção por cartão (o nome do cartão só
@@ -313,7 +319,7 @@ teto variável = renda mensal
   teto; sinaliza se está acima. O card da Início mostra também **quanto foi gasto
   nos cartões de crédito, somando todos, só a minha parte** (sem o que não é meu), calculado no backend (`cardsMineCents`). O card acompanha
   o mês escolhido nas setas da Início: num **mês futuro** mostra o **previsto**
-  (fatura prevista de cada cartão, só com parcelas já enviadas pelo banco, mais os gastos fixos)
+  (fatura prevista de cada cartão, com parcelas lançadas e estimadas, mais os gastos fixos)
   contra o teto daquele mês, sem selo "No ritmo" nem marcador de hoje. Só existe
   `BudgetMonth` gravado para o mês atual e o seguinte; nos meses além disso o
   teto é **projetado** do mês configurado mais recente, só na resposta (nada é
