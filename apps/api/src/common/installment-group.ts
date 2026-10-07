@@ -33,7 +33,10 @@ export function installmentGroupKey(row: {
   // A data da compra também varia de uma parcela pra outra no BB (17 e 18/02 na mesma compra), então o
   // agrupamento usa só o MÊS da compra, mais o total de parcelas (evita juntar duas compras diferentes do
   // mesmo nome).
-  return `${installmentBaseName(row).toLowerCase()}|${monthKey(row.occurredAt)}|${row.installmentTotal}`
+  const base = installmentBaseName(row)
+    .replace(/\s*"[^"]*"$/, '')
+    .toLowerCase()
+  return `${base}|${monthKey(row.occurredAt)}|${row.installmentTotal}`
 }
 
 interface InstallmentRow {

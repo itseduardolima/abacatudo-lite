@@ -37,6 +37,19 @@ describe('installmentGroupKey', () => {
   })
 })
 
+describe('installmentGroupKey — Nubank com nome da loja entre aspas', () => {
+  const key = (description: string, number: number, total = 3) =>
+    installmentGroupKey({ description, occurredAt: OCCURRED_AT, installmentTotal: total, installmentNumber: number })
+
+  it('"Parcelamento de Compra" e "Parcelamento de Compra \"Loja\"" são a mesma compra', () => {
+    expect(key('Parcelamento de Compra', 2)).toBe(key('Parcelamento de Compra "Hr Restaurante"', 3))
+  })
+
+  it('compra com outro total de parcelas continua separada', () => {
+    expect(key('Parcelamento de Compra', 2, 3)).not.toBe(key('Parcelamento de Compra "Baladapp"', 3, 7))
+  })
+})
+
 describe('installmentGroupKey — descrição do BB e data de compra variável', () => {
   const key = (description: string, number: number, at: string, total = 12) =>
     installmentGroupKey({ description, occurredAt: new Date(at), installmentTotal: total, installmentNumber: number })
