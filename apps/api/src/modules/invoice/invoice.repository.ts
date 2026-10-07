@@ -69,6 +69,7 @@ export class InvoiceRepository {
         cancelledAt: null,
         accountId,
         kind: 'CARD_PAYMENT',
+        installmentTotal: null,
         occurredAt: { gte: since },
         OR: [{ billId: null }, { billId: closedBillId }],
         account: { type: 'CREDIT_CARD', source: 'PLUGGY' },

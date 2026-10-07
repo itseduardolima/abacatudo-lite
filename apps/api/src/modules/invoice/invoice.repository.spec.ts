@@ -32,6 +32,12 @@ describe('InvoiceRepository: compra cancelada fica fora da conta', () => {
     expect(transaction.findMany.mock.calls[0][0].where).toMatchObject({ userId: 'user-1', cancelledAt: null })
   })
 
+  it('sumPaymentsSince ignora a linha provisória do parcelamento, que tem total de parcelas e não é pagamento', async () => {
+    const { prisma, transaction } = fakePrisma()
+    await new InvoiceRepository(prisma).sumPaymentsSince('user-1', 'acc-1', RANGE.start, 'bill-1')
+    expect(transaction.aggregate.mock.calls[0][0].where).toMatchObject({ kind: 'CARD_PAYMENT', installmentTotal: null })
+  })
+
   it('sumPaymentsSince e findLastInstallmentDueAt filtram cancelledAt null', async () => {
     const { prisma, transaction } = fakePrisma()
     const repo = new InvoiceRepository(prisma)
