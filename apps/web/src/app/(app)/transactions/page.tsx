@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import type { Segment } from './use-transactions-page'
 import { StatementsSheet } from './statements-sheet'
 import { TransactionSheet } from './transaction-sheet'
+import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { BackIcon, IconButton } from '@/components/ui/IconButton'
 import { MonthStepper } from '@/components/ui/MonthStepper'
@@ -67,6 +68,8 @@ function TransactionsContent() {
     selectPerson,
     acceptSuggestedCategory,
     isSaving,
+    setCancelled,
+    isCancelling,
     ruleError,
     openSplit,
     splitPersonIds,
@@ -233,10 +236,19 @@ function TransactionsContent() {
               key={tx.id}
               type="button"
               onClick={() => openEdit(tx.id)}
-              className="flex w-full items-center justify-between gap-3 border-b border-surface py-3 text-left last:border-b-0"
+              className={`flex w-full items-center justify-between gap-3 border-b border-surface py-3 text-left last:border-b-0 ${
+                tx.cancelledAt ? 'opacity-60' : ''
+              }`}
             >
               <div className="min-w-0">
-                <p className="truncate font-semibold text-ink">{tx.displayName ?? tx.merchant ?? tx.description}</p>
+                <p className={`truncate font-semibold text-ink ${tx.cancelledAt ? 'line-through' : ''}`}>
+                  {tx.displayName ?? tx.merchant ?? tx.description}
+                </p>
+                {tx.cancelledAt && (
+                  <div className="mt-1">
+                    <Badge>Cancelada</Badge>
+                  </div>
+                )}
                 {tx.kind !== 'CARD_PAYMENT' &&
                 !tx.categoryName &&
                 tx.categorySuggestedName &&
@@ -266,7 +278,10 @@ function TransactionsContent() {
                   </span>
                 ) : (
                   <>
-                    <MoneyText cents={tx.kind === 'REFUND' ? -tx.amountCents : tx.amountCents} />
+                    <MoneyText
+                      cents={tx.kind === 'REFUND' ? -tx.amountCents : tx.amountCents}
+                      className={tx.cancelledAt ? 'line-through' : undefined}
+                    />
                     {/* "Eu" é o padrão (03-regras-negocio § Atribuição de pessoa: toda transação nasce
                     Meu) — mostrar o avatar nesse caso só repetia informação óbvia em toda linha; só vale
                     a pena chamar atenção quando é de outra pessoa. */}
@@ -317,6 +332,8 @@ function TransactionsContent() {
           categories={categories}
           people={people}
           isSaving={isSaving}
+          setCancelled={(id, cancelled) => void setCancelled(id, cancelled)}
+          isCancelling={isCancelling}
           ruleError={ruleError}
           nameDraft={nameDraft}
           setNameDraft={setNameDraft}

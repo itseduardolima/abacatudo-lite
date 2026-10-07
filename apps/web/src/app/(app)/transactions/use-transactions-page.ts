@@ -12,6 +12,7 @@ import { usePreviewSplit } from '@/hooks/queries/use-preview-split'
 import { useReplaceSplit } from '@/hooks/queries/use-replace-split'
 import { useSuggestCategories } from '@/hooks/queries/use-suggest-categories'
 import { useTransactions } from '@/hooks/queries/use-transactions'
+import { useUpdateTransactionCancellation } from '@/hooks/queries/use-update-transaction-cancellation'
 import { useUpdateTransactionDisplayName } from '@/hooks/queries/use-update-transaction-display-name'
 import { useUpdateTransactionCategory } from '@/hooks/queries/use-update-transaction-category'
 import { useUpdateTransactionPerson } from '@/hooks/queries/use-update-transaction-person'
@@ -42,6 +43,7 @@ export function useTransactionsPage() {
   const updateCategory = useUpdateTransactionCategory()
   const updatePerson = useUpdateTransactionPerson()
   const updateDisplayName = useUpdateTransactionDisplayName()
+  const updateCancellation = useUpdateTransactionCancellation()
   const previewSplit = usePreviewSplit()
   const replaceSplit = useReplaceSplit()
   const clearSplit = useClearSplit()
@@ -192,6 +194,9 @@ export function useTransactionsPage() {
       updatePerson.mutateAsync({ id: transactionId, input: { personId, alwaysForMerchant, alwaysForCard: false } }),
     )
 
+  const setCancelled = (transactionId: string, cancelled: boolean) =>
+    runUpdate(() => updateCancellation.mutateAsync({ id: transactionId, cancelled }))
+
   const editingTx = editingId ? (rows.find((row) => row.id === editingId) ?? null) : null
 
   // Abre a divisão já com quem já estava dividido (ou só "Eu" + a pessoa atual, pra começar de algo)
@@ -297,6 +302,8 @@ export function useTransactionsPage() {
     selectPerson,
     acceptSuggestedCategory,
     isSaving: updateCategory.isPending || updatePerson.isPending,
+    setCancelled,
+    isCancelling: updateCancellation.isPending,
     ruleError,
     openSplit,
     splitPersonIds,

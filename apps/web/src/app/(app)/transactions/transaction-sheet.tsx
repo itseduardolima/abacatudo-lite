@@ -3,6 +3,7 @@
 import type { Category, Person, TransactionKind } from '@gastos/shared'
 import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useEffect } from 'react'
+import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Input } from '@/components/ui/Input'
@@ -20,6 +21,7 @@ export interface SheetTransaction {
   description: string
   merchant: string | null
   displayName: string | null
+  cancelledAt: string | null
   categoryId: string | null
   personId: string | null
   cardLast4: string | null
@@ -40,6 +42,8 @@ interface TransactionSheetProps {
   categories: Category[]
   people: Person[]
   isSaving: boolean
+  setCancelled: (transactionId: string, cancelled: boolean) => void
+  isCancelling: boolean
   ruleError: string | null
   nameDraft: string
   setNameDraft: (value: string) => void
@@ -77,6 +81,8 @@ export function TransactionSheet({
   categories,
   people,
   isSaving,
+  setCancelled,
+  isCancelling,
   ruleError,
   nameDraft,
   setNameDraft,
@@ -117,6 +123,8 @@ export function TransactionSheet({
     tx.installmentNumber != null && tx.installmentTotal != null ? tx.installmentTotal - tx.installmentNumber : 0
   const isSplit = tx.splits.length > 0
   const canSplit = tx.kind === 'EXPENSE' || tx.kind === 'REFUND'
+  const isCancelled = tx.cancelledAt !== null
+  const canCancel = canSplit
 
   const splitSumCents = splitPersonIds.reduce(
     (total, personId) => total + (parseMoneyInput(splitAmounts[personId] ?? '0') || 0),
@@ -137,7 +145,14 @@ export function TransactionSheet({
           <div className="flex flex-col gap-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-xl font-bold text-ink">{tx.displayName ?? tx.merchant ?? tx.description}</p>
+                <p className={`truncate text-xl font-bold text-ink ${isCancelled ? 'line-through' : ''}`}>
+                  {tx.displayName ?? tx.merchant ?? tx.description}
+                </p>
+                {isCancelled && (
+                  <div className="mt-1">
+                    <Badge>Cancelada</Badge>
+                  </div>
+                )}
                 {(tx.displayName || tx.merchant) && (
                   <p className="mt-0.5 truncate text-xs text-muted">{tx.description}</p>
                 )}
@@ -153,7 +168,7 @@ export function TransactionSheet({
             </div>
 
             <p
-              className={`display-number text-[2.75rem] ${tx.kind === 'CARD_PAYMENT' ? 'text-primary-ink' : 'text-ink'}`}
+              className={`display-number text-[2.75rem] ${tx.kind === 'CARD_PAYMENT' ? 'text-primary-ink' : 'text-ink'} ${isCancelled ? 'line-through' : ''}`}
             >
               <MoneyText
                 cents={tx.kind === 'CARD_PAYMENT' || tx.kind === 'REFUND' ? -tx.amountCents : tx.amountCents}
@@ -246,6 +261,26 @@ export function TransactionSheet({
                   {formatMoney(tx.amountCents)}, {formatMoney(tx.amountCents * remainingInstallments)} nos próximos
                   meses. Elas ficam fora do mês atual.
                 </span>
+              </div>
+            )}
+
+            {canCancel && (
+              <div className="flex flex-col gap-2">
+                {ruleError && <InlineAlert>{ruleError}</InlineAlert>}
+                {!isCancelled && tx.installmentTotal != null && tx.installmentNumber != null && (
+                  <p className="text-xs text-muted">
+                    Cancelar tira todas as parcelas ainda não faturadas dessa compra da fatura, do orçamento e dos
+                    relatórios.
+                  </p>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  state={isCancelling ? 'loading' : 'idle'}
+                  onClick={() => setCancelled(tx.id, !isCancelled)}
+                >
+                  {isCancelled ? 'Reativar compra' : 'Cancelar compra'}
+                </Button>
               </div>
             )}
 
