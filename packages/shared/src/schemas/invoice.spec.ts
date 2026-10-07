@@ -1,9 +1,4 @@
-import {
-  accountInvoiceSchema,
-  estimatedInstallmentsResponseSchema,
-  invoiceSchema,
-  statementsResponseSchema,
-} from './invoice'
+import { accountInvoiceSchema, invoiceSchema, statementsResponseSchema } from './invoice'
 
 describe('invoiceSchema', () => {
   it('aceita a forma completa', () => {
@@ -22,7 +17,6 @@ describe('accountInvoiceSchema', () => {
     totalCents: 100,
     mineCents: 60,
     notMineCents: 40,
-    estimatedCents: 0,
     advancePaidCents: 0,
     isForecast: true,
   }
@@ -57,36 +51,6 @@ describe('statementsResponseSchema', () => {
         isForecast: false,
         statements: [{ ...statement, phone: '1' }],
       }).success,
-    ).toBe(false)
-  })
-})
-
-describe('estimatedInstallmentsResponseSchema', () => {
-  const item = {
-    key: 'compra#3',
-    label: 'Air fryer',
-    amountCents: 21204,
-    installmentNumber: 3,
-    installmentTotal: 12,
-    dueAt: '2026-10-17T12:00:00.000Z',
-  }
-
-  it('aceita a lista de parcelas estimadas', () => {
-    expect(
-      estimatedInstallmentsResponseSchema.safeParse({ month: '2026-10', totalCents: 21204, items: [item] }).success,
-    ).toBe(true)
-  })
-
-  it('recusa parcela zero e campo desconhecido', () => {
-    expect(
-      estimatedInstallmentsResponseSchema.safeParse({
-        month: '2026-10',
-        totalCents: 0,
-        items: [{ ...item, installmentNumber: 0 }],
-      }).success,
-    ).toBe(false)
-    expect(
-      estimatedInstallmentsResponseSchema.safeParse({ month: '2026-10', totalCents: 0, items: [], extra: 1 }).success,
     ).toBe(false)
   })
 })
