@@ -41,7 +41,7 @@ describe('installmentGroupKey — Nubank com nome da loja entre aspas', () => {
   const key = (description: string, number: number, total = 3) =>
     installmentGroupKey({ description, occurredAt: OCCURRED_AT, installmentTotal: total, installmentNumber: number })
 
-  it('"Parcelamento de Compra" e "Parcelamento de Compra \"Loja\"" são a mesma compra', () => {
+  it('Parcelamento de Compra com e sem nome da loja são a mesma compra', () => {
     expect(key('Parcelamento de Compra', 2)).toBe(key('Parcelamento de Compra "Hr Restaurante"', 3))
   })
 

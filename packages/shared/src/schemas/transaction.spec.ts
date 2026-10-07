@@ -142,3 +142,14 @@ describe('updateTransactionDisplayNameInputSchema', () => {
     expect(updateTransactionDisplayNameInputSchema.safeParse({ displayName: null, extra: 1 }).success).toBe(false)
   })
 })
+
+describe('updateTransactionCancellationInputSchema', () => {
+  it('aceita cancelled booleano', () => {
+    expect(updateTransactionCancellationInputSchema.parse({ cancelled: true })).toEqual({ cancelled: true })
+  })
+
+  it('rejeita campo extra e valor não booleano', () => {
+    expect(updateTransactionCancellationInputSchema.safeParse({ cancelled: true, extra: 1 }).success).toBe(false)
+    expect(updateTransactionCancellationInputSchema.safeParse({ cancelled: 'yes' }).success).toBe(false)
+  })
+})
