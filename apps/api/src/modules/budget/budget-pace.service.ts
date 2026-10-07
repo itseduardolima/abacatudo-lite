@@ -32,6 +32,7 @@ export class BudgetPaceService {
       capCents: budget.incomeCents,
       spentCents: invoice.mineCents + fixedExpensesCents,
       cardsMineCents: invoice.mineCents,
+      fixedExpensesCents,
     })
   }
 }

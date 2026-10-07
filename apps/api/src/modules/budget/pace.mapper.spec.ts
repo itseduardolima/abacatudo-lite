@@ -10,6 +10,7 @@ describe('computePace', () => {
       capCents: 300_000,
       spentCents: 100_000,
       cardsMineCents: 0,
+      fixedExpensesCents: 0,
     })
     expect(result.daysInMonth).toBe(30)
     expect(result.daysElapsed).toBe(14)
@@ -26,6 +27,7 @@ describe('computePace', () => {
       capCents: 300_000,
       spentCents: 50_000,
       cardsMineCents: 0,
+      fixedExpensesCents: 0,
     })
     expect(result.status).toBe('ON_TRACK')
     expect(result.diffCents).toBeGreaterThan(0)
@@ -39,6 +41,7 @@ describe('computePace', () => {
       capCents: 300_000,
       spentCents: 250_000,
       cardsMineCents: 0,
+      fixedExpensesCents: 0,
     })
     expect(result.status).toBe('OVER_PACE')
     expect(result.diffCents).toBeLessThan(0)
@@ -52,6 +55,7 @@ describe('computePace', () => {
       capCents: 300_000,
       spentCents: 280_000,
       cardsMineCents: 0,
+      fixedExpensesCents: 0,
     })
     expect(result.daysElapsed).toBe(result.daysInMonth)
     expect(result.daysRemaining).toBe(0)
@@ -67,6 +71,7 @@ describe('computePace', () => {
       capCents: 300_000,
       spentCents: 0,
       cardsMineCents: 0,
+      fixedExpensesCents: 0,
     })
     expect(result.daysElapsed).toBe(0)
     expect(result.expectedByNowCents).toBe(0)
@@ -81,6 +86,7 @@ describe('computePace', () => {
       capCents: 100_000,
       spentCents: 150_000,
       cardsMineCents: 0,
+      fixedExpensesCents: 0,
     })
     expect(result.remainingCents).toBe(-50_000)
     expect(result.perDayRemainingCents).toBeLessThan(0)
@@ -94,6 +100,7 @@ describe('computePace', () => {
       capCents: 300_000,
       spentCents: 0,
       cardsMineCents: 0,
+      fixedExpensesCents: 0,
     })
     expect(result.daysElapsed).toBe(0)
     expect(result.expectedByNowCents).toBe(0)
@@ -108,8 +115,10 @@ describe('computePace', () => {
       capCents: 300_000,
       spentCents: 100_000,
       cardsMineCents: 180_000,
+      fixedExpensesCents: 0,
     })
     expect(result.cardsMineCents).toBe(180_000)
+    expect(result.fixedExpensesCents).toBe(0)
     expect(result.spentCents).toBe(100_000)
   })
 })
