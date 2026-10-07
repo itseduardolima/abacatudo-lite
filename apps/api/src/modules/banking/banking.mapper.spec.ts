@@ -28,6 +28,11 @@ describe('resolveKind', () => {
     expect(resolveKind(tx({ type: 'CREDIT' }), true)).toBe('REFUND')
   })
 
+  it('CREDIT em cartão com descrição "PAGAMENTO ON LINE" (Inter) é pagamento de fatura, não estorno', () => {
+    expect(resolveKind(tx({ type: 'CREDIT', description: 'PAGAMENTO ON LINE' }), true)).toBe('CARD_PAYMENT')
+    expect(resolveKind(tx({ type: 'CREDIT', description: 'COMPRA PARCELADA INTER' }), true)).toBe('REFUND')
+  })
+
   it('CREDIT em movimentação é dinheiro entrando de verdade (INCOME), não estorno', () => {
     expect(resolveKind(tx({ type: 'CREDIT' }), false)).toBe('INCOME')
   })

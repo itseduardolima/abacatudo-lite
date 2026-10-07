@@ -19,6 +19,8 @@ export type MappedTransaction = Omit<Prisma.TransactionUncheckedCreateInput, 'us
 // também manda numa compra parcelada comum (esse não serve, é ambíguo).
 const CARD_PAYMENT_CATEGORY_ID = '05100000'
 const CARD_PAYMENT_OPERATION_TYPE = 'PAGAMENTO_FATURA'
+// O Inter manda o pagamento da fatura como CREDIT sem operationType nem categoria, só com esta descrição.
+const CARD_PAYMENT_DESCRIPTION = /^pagamento on ?line\b/i
 
 // CREDIT vira REFUND só em cartão de crédito (estorno de compra). Em conta de movimentação (corrente,
 // benefício), CREDIT é dinheiro entrando de verdade (Pix recebido, depósito) — vira INCOME, não estorno.
@@ -26,7 +28,8 @@ export function resolveKind(tx: PluggyTransaction, isCreditCard: boolean): Trans
   if (
     tx.categoryId === CARD_PAYMENT_CATEGORY_ID ||
     tx.category?.toLowerCase() === 'credit card payment' ||
-    (isCreditCard && tx.type === 'CREDIT' && tx.operationType === CARD_PAYMENT_OPERATION_TYPE)
+    (isCreditCard && tx.type === 'CREDIT' && tx.operationType === CARD_PAYMENT_OPERATION_TYPE) ||
+    (isCreditCard && tx.type === 'CREDIT' && CARD_PAYMENT_DESCRIPTION.test(tx.description))
   ) {
     return 'CARD_PAYMENT'
   }
