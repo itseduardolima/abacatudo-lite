@@ -5,6 +5,7 @@ export interface StatementRow extends InvoiceRow {
   installmentNumber: number | null
   installmentTotal: number | null
   sortAt: Date
+  estimated?: boolean
 }
 
 export interface StatementCardInput {
@@ -25,6 +26,7 @@ export interface StatementLine {
   amountCents: number
   installmentNumber: number | null
   installmentTotal: number | null
+  estimated: boolean
 }
 
 export interface CardStatement {
@@ -70,6 +72,7 @@ export function buildPersonStatements(cards: StatementCardInput[], people: State
           amountCents: sign * share.amountCents,
           installmentNumber: row.installmentNumber,
           installmentTotal: row.installmentTotal,
+          estimated: row.estimated ?? false,
         }
         entry.card.lines.push(line)
         entry.sortAts.set(line, row.sortAt)
@@ -119,7 +122,8 @@ function formatLine(line: StatementLine): string {
   const base = `${line.label}: ${formatBrl(line.amountCents)}`
   if (line.installmentNumber == null || line.installmentTotal == null) return base
   const last = line.installmentNumber === line.installmentTotal ? ' - última' : ''
-  return `${base} (${line.installmentNumber}/${line.installmentTotal}${last})`
+  const estimated = line.estimated ? ' - estimada' : ''
+  return `${base} (${line.installmentNumber}/${line.installmentTotal}${last}${estimated})`
 }
 
 export function formatStatementText(statement: PersonStatement, monthKeyValue: string, isForecast: boolean): string {

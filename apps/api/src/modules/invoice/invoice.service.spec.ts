@@ -22,6 +22,7 @@ function repoMock() {
     sumPaymentsSince: jest.fn().mockResolvedValue(0),
     findForecastRows: jest.fn(),
     findLastInstallmentDueAt: jest.fn(),
+    findInstallmentSources: jest.fn().mockResolvedValue([]),
     findStatementOpenRows: jest.fn(),
     findStatementForecastRows: jest.fn(),
     findStatementCalendarRows: jest.fn(),
@@ -309,6 +310,7 @@ describe('InvoiceService', () => {
         totalCents: 20000,
         mineCents: 11000,
         notMineCents: 9000,
+        estimatedCents: 0,
         advancePaidCents: 0,
         isForecast: true,
         lastForecastMonth: shiftMonthKey(currentMonth, 5),
@@ -330,6 +332,7 @@ describe('InvoiceService', () => {
         totalCents: 0,
         mineCents: 0,
         notMineCents: 0,
+        estimatedCents: 0,
         advancePaidCents: 0,
         isForecast: true,
         lastForecastMonth: null,
@@ -392,21 +395,164 @@ describe('InvoiceService', () => {
     })
   })
 
-  describe('lastForecastMonth', () => {
-    it('usa só o mês da última parcela real e é null sem parcelas', async () => {
-      const run = async (last: Date | null) => {
-        const accounts = accountsMock()
-        accounts.findById.mockResolvedValue(accountRow({ source: 'PLUGGY' }))
-        const people = peopleMock()
-        people.findSelf.mockResolvedValue(personRow())
-        const repo = repoMock()
-        repo.findOpenRows.mockResolvedValue([])
-        repo.findLastInstallmentDueAt.mockResolvedValue(last)
-        return new InvoiceService(repo, accounts, people, pluggyMock()).getForAccount('user-1', 'acc-1')
-      }
+  describe('parcelas estimadas', () => {
+    const currentMonth = monthKey(new Date())
+    const nextMonth = shiftMonthKey(currentMonth, 1)
+    const source = (overrides: Record<string, unknown> = {}) => ({
+      groupKey: 'compra-a',
+      number: 2,
+      total: 4,
+      dueAt: new Date(`${currentMonth}-17T12:00:00.000Z`),
+      amountCents: 10000,
+      kind: 'EXPENSE' as const,
+      personId: 'self-1',
+      splits: [],
+      label: 'Compra A',
+      ...overrides,
+    })
 
-      expect((await run(new Date('2027-03-17T12:00:00.000Z'))).lastForecastMonth).toBe('2027-03')
-      expect((await run(null)).lastForecastMonth).toBeNull()
+    function setup(sources: ReturnType<typeof source>[], realRows: unknown[] = []) {
+      const accounts = accountsMock()
+      accounts.findById.mockResolvedValue(accountRow({ source: 'PLUGGY', externalAccountId: 'ext-1', dueDay: 17 }))
+      accounts.findMany.mockResolvedValue([accountRow({ source: 'PLUGGY', externalAccountId: 'ext-1', dueDay: 17 })])
+      const people = peopleMock()
+      people.findSelf.mockResolvedValue(personRow())
+      people.findMany.mockResolvedValue([personRow(), personRow({ id: 'ana', name: 'Ana', isSelf: false })])
+      const repo = repoMock()
+      repo.findInstallmentSources.mockResolvedValue(sources)
+      repo.findForecastRows.mockResolvedValue(realRows as never)
+      repo.findLastInstallmentDueAt.mockResolvedValue(null)
+      repo.findStatementForecastRows.mockResolvedValue([])
+      return { service: new InvoiceService(repo, accounts, people, pluggyMock()), repo }
+    }
+
+    it('fatura aberta de cartão com closingDay inclui a próxima parcela ainda não lançada pelo banco', async () => {
+      const accounts = accountsMock()
+      accounts.findById.mockResolvedValue(accountRow({ source: 'PLUGGY', closingDay: 2 }))
+      const people = peopleMock()
+      people.findSelf.mockResolvedValue(personRow())
+      const repo = repoMock()
+      repo.findOpenRows.mockResolvedValue([])
+      const next = lastClosingCutoff(2)
+      repo.findInstallmentSources.mockResolvedValue([
+        {
+          groupKey: 'jim',
+          number: 1,
+          total: 12,
+          dueAt: new Date(next.getTime() - 15 * 86_400_000),
+          amountCents: 7999,
+          kind: 'EXPENSE',
+          personId: 'self-1',
+          splits: [],
+          label: 'JIM',
+        },
+      ])
+      const service = new InvoiceService(repo, accounts, people, pluggyMock())
+
+      const result = await service.getForAccount('user-1', 'acc-1', monthKey(new Date()))
+
+      expect(result).toMatchObject({ totalCents: 7999, mineCents: 7999, estimatedCents: 7999 })
+    })
+
+    it('mês futuro soma as estimadas às lançadas e informa quanto é estimado', async () => {
+      const { service } = setup(
+        [source()],
+        [{ kind: 'EXPENSE', amountCents: 2500, personId: 'self-1', splits: [], installment: null }],
+      )
+
+      const result = await service.getForAccount('user-1', 'acc-1', nextMonth)
+
+      expect(result).toMatchObject({
+        totalCents: 12500,
+        mineCents: 12500,
+        notMineCents: 0,
+        estimatedCents: 10000,
+        advancePaidCents: 0,
+        isForecast: true,
+      })
+    })
+
+    it('a previsão vai até a última parcela estimada e o mês atual nunca é estimado', async () => {
+      const { service, repo } = setup([source({ number: 1, total: 4 })])
+      repo.findOpenRows.mockResolvedValue([])
+
+      const current = await service.getForAccount('user-1', 'acc-1', currentMonth)
+
+      expect(current.lastForecastMonth).toBe(shiftMonthKey(currentMonth, 3))
+      expect(current.estimatedCents).toBe(0)
+      expect(current.isForecast).toBe(false)
+    })
+
+    it('quando o banco lança a parcela seguinte, a estimada daquele mês some e o total não dobra', async () => {
+      const forMonth = async (sources: ReturnType<typeof source>[], realRows: unknown[]) =>
+        setup(sources, realRows).service.getForAccount('user-1', 'acc-1', nextMonth)
+
+      const before = await forMonth([source({ number: 2 })], [])
+      const after = await forMonth(
+        [source({ number: 2 }), source({ number: 3, dueAt: new Date(`${nextMonth}-17T12:00:00.000Z`) })],
+        [{ kind: 'EXPENSE', amountCents: 10000, personId: 'self-1', splits: [], installment: null }],
+      )
+
+      expect(before).toMatchObject({ totalCents: 10000, estimatedCents: 10000 })
+      expect(after).toMatchObject({ totalCents: 10000, estimatedCents: 0 })
+    })
+
+    it('banco que já manda todas as parcelas (Nubank) não gera estimativa', async () => {
+      const { service } = setup([source({ number: 4, total: 4 })])
+
+      const result = await service.getForAccount('user-1', 'acc-1', nextMonth)
+
+      expect(result).toMatchObject({ totalCents: 0, estimatedCents: 0 })
+    })
+
+    it('getEstimates lista as estimadas do mês, ordenadas, e zera fora de mês futuro', async () => {
+      const { service } = setup([
+        source({
+          groupKey: 'b',
+          label: 'Beta',
+          number: 1,
+          total: 3,
+          dueAt: new Date(`${currentMonth}-20T12:00:00.000Z`),
+        }),
+        source({
+          groupKey: 'a',
+          label: 'Alfa',
+          number: 1,
+          total: 3,
+          dueAt: new Date(`${currentMonth}-05T12:00:00.000Z`),
+        }),
+      ])
+
+      const future = await service.getEstimates('user-1', 'acc-1', nextMonth)
+      const current = await service.getEstimates('user-1', 'acc-1', currentMonth)
+
+      expect(future.items.map((item) => [item.label, item.installmentNumber, item.installmentTotal])).toEqual([
+        ['Alfa', 2, 3],
+        ['Beta', 2, 3],
+      ])
+      expect(future.totalCents).toBe(20000)
+      expect(current).toEqual({ month: currentMonth, totalCents: 0, items: [] })
+    })
+
+    it('getEstimates: 404 de outro usuário e 400 sem conta', async () => {
+      const accounts = accountsMock()
+      accounts.findById.mockResolvedValue(null)
+      const service = new InvoiceService(repoMock(), accounts, peopleMock(), pluggyMock())
+
+      await expect(service.getEstimates('user-2', 'acc-do-user-1', nextMonth)).rejects.toBeInstanceOf(NotFoundError)
+      await expect(service.getEstimates('user-1', undefined, nextMonth)).rejects.toMatchObject({
+        code: 'ACCOUNT_ID_REQUIRED',
+      })
+    })
+
+    it('a mensagem de conta inclui as estimadas marcadas como estimada', async () => {
+      const { service } = setup([source({ personId: 'ana', label: 'Air fryer', number: 2, total: 4 })])
+
+      const result = await service.getStatements('user-1', nextMonth)
+
+      expect(result.isForecast).toBe(true)
+      expect(result.statements[0]?.text).toContain('Air fryer: R$ 100,00 (3/4 - estimada)')
+      expect(result.statements[0]?.text).toContain('(previsão)')
     })
   })
 
