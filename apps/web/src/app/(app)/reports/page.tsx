@@ -1,6 +1,7 @@
 'use client'
 
 import { BreakdownRow } from './breakdown-row'
+import { BreakdownRowsSkeleton, TotalSkeleton } from './reports-skeleton'
 import { SavingsSection } from './savings-section'
 import { SubscriptionsSection } from './subscriptions-section'
 import { useReportsPage, type ReportTab, type ReportView } from './use-reports-page'
@@ -70,6 +71,7 @@ export default function ReportsPage() {
 
       {tab === 'spending' && (
         <>
+          {isLoading && !report && <TotalSkeleton />}
           {report && (
             <section>
               <p className="text-sm text-muted">
@@ -85,7 +87,7 @@ export default function ReportsPage() {
           <SegmentedControl label="Agrupar por" options={VIEW_OPTIONS} value={view} onChange={setView} />
 
           {errorMessage && <InlineAlert>{errorMessage}</InlineAlert>}
-          {isLoading && <p className="text-text">Carregando…</p>}
+          {isLoading && <BreakdownRowsSkeleton />}
           {!isLoading && !errorMessage && items.length === 0 && (
             <p className="text-text">Nenhuma compra no cartão neste mês.</p>
           )}

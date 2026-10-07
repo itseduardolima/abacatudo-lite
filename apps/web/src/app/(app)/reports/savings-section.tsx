@@ -1,5 +1,6 @@
 'use client'
 
+import { SavingsRowsSkeleton, TotalSkeleton } from './reports-skeleton'
 import { SavingsRow } from './savings-row'
 import { MoneyText } from '@/components/finance/MoneyText'
 import { InlineAlert } from '@/components/ui/InlineAlert'
@@ -15,7 +16,12 @@ export function SavingsSection({ month }: { month: string }) {
   return (
     <div className="flex flex-col gap-5">
       {errorMessage && <InlineAlert>{errorMessage}</InlineAlert>}
-      {savings.isPending && <p className="text-text">Carregando…</p>}
+      {savings.isPending && (
+        <>
+          <TotalSkeleton extraLines={1} />
+          <SavingsRowsSkeleton />
+        </>
+      )}
 
       {report && report.items.length === 0 && (
         <p className="text-text">

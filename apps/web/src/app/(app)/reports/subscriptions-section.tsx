@@ -1,5 +1,6 @@
 'use client'
 
+import { SubscriptionRowsSkeleton, TotalSkeleton } from './reports-skeleton'
 import { SubscriptionRow } from './subscription-row'
 import { MoneyText } from '@/components/finance/MoneyText'
 import { InlineAlert } from '@/components/ui/InlineAlert'
@@ -16,7 +17,12 @@ export function SubscriptionsSection() {
   return (
     <div className="flex flex-col gap-5">
       {errorMessage && <InlineAlert>{errorMessage}</InlineAlert>}
-      {subscriptions.isPending && <p className="text-text">Carregando…</p>}
+      {subscriptions.isPending && (
+        <>
+          <TotalSkeleton extraLines={2} />
+          <SubscriptionRowsSkeleton />
+        </>
+      )}
 
       {report && report.items.length === 0 && (
         <p className="text-text">
