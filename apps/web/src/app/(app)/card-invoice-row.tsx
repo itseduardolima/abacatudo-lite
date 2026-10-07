@@ -3,6 +3,7 @@
 import type { Account, AccountInvoice } from '@gastos/shared'
 import Link from 'next/link'
 import { BankAvatar } from '@/components/finance/BankAvatar'
+import { InvoiceRowSkeleton } from './home-skeleton'
 import { MoneyText } from '@/components/finance/MoneyText'
 
 // Linha de "Faturas de [mês]" na Home (protótipo 07-inicio): um card por conta de cartão, com barra de
@@ -12,12 +13,14 @@ export function CardInvoiceRow({
   account,
   invoice,
   month,
+  isLoading = false,
 }: {
   account: Account
   invoice: AccountInvoice | undefined
   month?: string
+  isLoading?: boolean
 }) {
-  if (!invoice) return null
+  if (!invoice) return isLoading ? <InvoiceRowSkeleton /> : null
   const { mineCents, totalCents } = invoice
   const percent = totalCents > 0 ? Math.min((mineCents / totalCents) * 100, 100) : 0
 

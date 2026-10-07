@@ -20,6 +20,7 @@ export default function HomePage() {
     cardAccounts,
     invoiceByAccountId,
     forecast,
+    isLoadingInvoices,
     isLoadingAccounts,
     onConnectBank,
     isConnectingBank,
@@ -65,6 +66,7 @@ export default function HomePage() {
                 account={account}
                 invoice={invoiceByAccountId.get(account.id)}
                 month={forecast.isForecast ? forecast.month : undefined}
+                isLoading={isLoadingInvoices}
               />
             ))}
           </div>

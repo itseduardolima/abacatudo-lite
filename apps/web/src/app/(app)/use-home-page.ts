@@ -58,6 +58,7 @@ export function useHomePage() {
       cardAccounts.map((account, index) => [account.id, monthInvoices[index]?.data] as const),
     ),
     forecast,
+    isLoadingInvoices: monthInvoices.some((query) => query.isPending),
     isLoadingAccounts: accounts.isPending,
     onConnectBank,
     isConnectingBank: connectBank.isPending,

@@ -15,6 +15,25 @@ export function HeroSkeleton() {
   )
 }
 
+export function InvoiceRowSkeleton() {
+  return (
+    <div aria-hidden className="border-b border-surface py-3.5 last:border-0">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <Skeleton className="h-7 w-7 rounded-full" />
+          <Skeleton className="h-4 w-28" />
+        </div>
+        <Skeleton className="h-6 w-20" />
+      </div>
+      <Skeleton className="mt-2.5 h-2" />
+      <div className="mt-1.5 flex justify-between">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-20" />
+      </div>
+    </div>
+  )
+}
+
 export function InvoicesSkeleton() {
   return (
     <section aria-hidden>
@@ -24,20 +43,7 @@ export function InvoicesSkeleton() {
       </div>
       <div className="mt-1">
         {[0, 1, 2].map((key) => (
-          <div key={key} className="border-b border-surface py-3.5 last:border-0">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <Skeleton className="h-7 w-7 rounded-full" />
-                <Skeleton className="h-4 w-28" />
-              </div>
-              <Skeleton className="h-6 w-20" />
-            </div>
-            <Skeleton className="mt-2.5 h-2" />
-            <div className="mt-1.5 flex justify-between">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-20" />
-            </div>
-          </div>
+          <InvoiceRowSkeleton key={key} />
         ))}
       </div>
     </section>
