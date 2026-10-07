@@ -360,8 +360,10 @@ describe('TransactionService', () => {
       row({ id, description: `Air fryer ${n}/12`, occurredAt, installmentNumber: n, installmentTotal: 12, ...extra })
     const candidate = (id: string, name: string, n: number) => ({
       id,
+      accountId: 'acc-1',
       description: `${name} ${n}/12`,
       occurredAt,
+      amountCents: 1500,
       installmentNumber: n,
       installmentTotal: 12,
     })
@@ -415,6 +417,39 @@ describe('TransactionService', () => {
 
       expect(repo.findUnbilledPurchaseCandidates).toHaveBeenCalledWith('user-1', 'acc-1', 12)
       expect(repo.setCancelledAt).toHaveBeenCalledWith('user-1', ['tx-3', 'tx-4', 'tx-12'], expect.any(Date))
+    })
+
+    it('cancela a compra inteira mesmo com a descrição truncada nas parcelas seguintes', async () => {
+      const repo = repoMock()
+      repo.findById.mockResolvedValue(
+        row({
+          id: 'p1',
+          description: 'MERCADOLIVRE*PODEROSABLZ',
+          occurredAt,
+          amountCents: 5336,
+          installmentNumber: 1,
+          installmentTotal: 10,
+        }),
+      )
+      const parcel = (id: string, description: string, n: number, amountCents: number) => ({
+        id,
+        accountId: 'acc-1',
+        description,
+        occurredAt,
+        amountCents,
+        installmentNumber: n,
+        installmentTotal: 10,
+      })
+      repo.findUnbilledPurchaseCandidates.mockResolvedValue([
+        parcel('p1', 'MERCADOLIVRE*PODEROSABLZ', 1, 5336),
+        parcel('p2', 'MERCADOLIVRE*PODE', 2, 5334),
+        parcel('x1', 'MERCADOLIVRE*LHSHOOP', 1, 5336),
+      ])
+      const service = newService({ repo })
+
+      await service.updateCancellation('user-1', 'p1', { cancelled: true })
+
+      expect(repo.setCancelledAt).toHaveBeenCalledWith('user-1', ['p1', 'p2'], expect.any(Date))
     })
 
     it('parcela já faturada: mexe só nela', async () => {
@@ -479,10 +514,42 @@ describe('TransactionService', () => {
         }),
       )
       repo.findPurchaseCandidates.mockResolvedValue([
-        { id: 'tx-3', description: 'Air fryer 3/12', occurredAt, installmentNumber: 3, installmentTotal: 12 },
-        { id: 'tx-4', description: 'Air fryer 4/12', occurredAt, installmentNumber: 4, installmentTotal: 12 },
-        { id: 'tx-12', description: 'Air fryer 12/12', occurredAt, installmentNumber: 12, installmentTotal: 12 },
-        { id: 'outra', description: 'TV 1/12', occurredAt, installmentNumber: 1, installmentTotal: 12 },
+        {
+          id: 'tx-3',
+          accountId: 'acc-1',
+          description: 'Air fryer 3/12',
+          occurredAt,
+          amountCents: 1500,
+          installmentNumber: 3,
+          installmentTotal: 12,
+        },
+        {
+          id: 'tx-4',
+          accountId: 'acc-1',
+          description: 'Air fryer 4/12',
+          occurredAt,
+          amountCents: 1500,
+          installmentNumber: 4,
+          installmentTotal: 12,
+        },
+        {
+          id: 'tx-12',
+          accountId: 'acc-1',
+          description: 'Air fryer 12/12',
+          occurredAt,
+          amountCents: 1500,
+          installmentNumber: 12,
+          installmentTotal: 12,
+        },
+        {
+          id: 'outra',
+          accountId: 'acc-1',
+          description: 'TV 1/12',
+          occurredAt,
+          amountCents: 1500,
+          installmentNumber: 1,
+          installmentTotal: 12,
+        },
       ])
       const service = newService({ repo })
 

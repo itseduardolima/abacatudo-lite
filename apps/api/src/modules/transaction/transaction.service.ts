@@ -7,7 +7,7 @@ import type {
   UpdateTransactionDisplayNameInput,
   UpdateTransactionPersonInput,
 } from '@gastos/shared'
-import { installmentGroupKey } from '../../common/installment-group'
+import { clusterInstallmentKeys } from '../../common/installment-group'
 import { dayFromDateString, monthKey, resolveMonthRange } from '../../common/date/timezone'
 import { DomainError, NotFoundError } from '../../common/errors/domain.error'
 import { AccountRepository } from '../account/account.repository'
@@ -166,27 +166,16 @@ export class TransactionService {
 
     const ids = [id]
     if (existing.installmentNumber != null && existing.installmentTotal != null && existing.billId === null) {
-      const groupKey = installmentGroupKey({
-        description: existing.description,
-        occurredAt: existing.occurredAt,
-        installmentTotal: existing.installmentTotal,
-        installmentNumber: existing.installmentNumber,
-      })
       const candidates = await this.repo.findUnbilledPurchaseCandidates(
         userId,
         existing.accountId,
         existing.installmentTotal,
       )
-      for (const candidate of candidates) {
-        if (candidate.id === id || candidate.installmentTotal == null) continue
-        const key = installmentGroupKey({
-          description: candidate.description,
-          occurredAt: candidate.occurredAt,
-          installmentTotal: candidate.installmentTotal,
-          installmentNumber: candidate.installmentNumber,
-        })
-        if (key === groupKey) ids.push(candidate.id)
-      }
+      const batch = [existing, ...candidates.filter((candidate) => candidate.id !== id)]
+      const keys = clusterInstallmentKeys(batch)
+      batch.forEach((candidate, index) => {
+        if (index > 0 && keys[index] === keys[0]) ids.push(candidate.id)
+      })
     }
 
     await this.repo.setCancelledAt(userId, ids, input.cancelled ? new Date() : null)
@@ -204,28 +193,17 @@ export class TransactionService {
 
     const ids = [id]
     if (existing.installmentNumber != null && existing.installmentTotal != null) {
-      const groupKey = installmentGroupKey({
-        description: existing.description,
-        occurredAt: existing.occurredAt,
-        installmentTotal: existing.installmentTotal,
-        installmentNumber: existing.installmentNumber,
-      })
       const candidates = await this.repo.findPurchaseCandidates(
         userId,
         existing.accountId,
         existing.occurredAt,
         existing.installmentTotal,
       )
-      for (const candidate of candidates) {
-        if (candidate.id === id || candidate.installmentTotal == null) continue
-        const key = installmentGroupKey({
-          description: candidate.description,
-          occurredAt: candidate.occurredAt,
-          installmentTotal: candidate.installmentTotal,
-          installmentNumber: candidate.installmentNumber,
-        })
-        if (key === groupKey) ids.push(candidate.id)
-      }
+      const batch = [existing, ...candidates.filter((candidate) => candidate.id !== id)]
+      const keys = clusterInstallmentKeys(batch)
+      batch.forEach((candidate, index) => {
+        if (index > 0 && keys[index] === keys[0]) ids.push(candidate.id)
+      })
     }
 
     await this.repo.updateDisplayName(userId, ids, input.displayName)

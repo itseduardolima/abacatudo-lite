@@ -1,4 +1,5 @@
 import type { PrismaService } from '../../prisma/prisma.client'
+import { computeInvoice, keepNextDueInstallmentOnly } from './invoice.mapper'
 import { InvoiceRepository } from './invoice.repository'
 
 function fakePrisma() {
@@ -38,5 +39,43 @@ describe('InvoiceRepository: compra cancelada fica fora da conta', () => {
     await repo.findLastInstallmentDueAt('user-1', 'acc-1')
     expect(transaction.aggregate.mock.calls[0][0].where).toMatchObject({ cancelledAt: null })
     expect(transaction.aggregate.mock.calls[1][0].where).toMatchObject({ cancelledAt: null })
+  })
+})
+
+describe('InvoiceRepository: parcelas com descrição truncada', () => {
+  const purchaseRow = (description: string, number: number, total: number, amountCents: number) => ({
+    kind: 'EXPENSE',
+    accountId: 'acc-1',
+    description,
+    occurredAt: new Date('2026-09-04T12:00:00.000Z'),
+    amountCents,
+    personId: 'self',
+    splits: [],
+    installmentNumber: number,
+    installmentTotal: total,
+  })
+
+  it.each([
+    [
+      [
+        purchaseRow('MERCADOLIVRE*PODEROSABLZ', 1, 10, 5336),
+        purchaseRow('MERCADOLIVRE*PODE', 2, 10, 5334),
+        purchaseRow('MERCADOLIVRE*PODE', 3, 10, 5334),
+      ],
+      5336,
+    ],
+    [
+      [
+        purchaseRow('MERCADOLIVRE*LHSHOOP', 1, 3, 1197),
+        purchaseRow('MERCADOLIVRE*LHSH', 2, 3, 1195),
+        purchaseRow('MERCADOLIVRE*LHSH', 3, 3, 1195),
+      ],
+      1197,
+    ],
+  ])('fatura aberta conta só a menor parcela uma vez', async (rows, expected) => {
+    const { prisma, transaction } = fakePrisma()
+    transaction.findMany.mockResolvedValue(rows)
+    const open = await new InvoiceRepository(prisma).findOpenRows('user-1')
+    expect(computeInvoice(keepNextDueInstallmentOnly(open), 'self').totalCents).toBe(expected)
   })
 })

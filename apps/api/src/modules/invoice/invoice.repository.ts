@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { installmentBaseName, installmentGroupKey } from '../../common/installment-group'
+import { clusterInstallmentKeys, installmentBaseName } from '../../common/installment-group'
 import { PRISMA, type PrismaService } from '../../prisma/prisma.client'
 import type { Prisma } from '@prisma/client'
 import type { InvoiceRow } from './invoice.mapper'
@@ -49,7 +49,8 @@ export class InvoiceRepository {
       },
       include: { splits: { select: { personId: true, amountCents: true } } },
     })
-    return rows.map((row) => toInvoiceRow(row, installmentOf(row)))
+    const installments = installmentsOf(rows)
+    return rows.map((row, index) => toInvoiceRow(row, installments[index]!))
   }
 
   // Só pagamento ainda sem fatura ou ligado à fatura fechada: o ligado a uma fatura anterior (pago no dia do
@@ -133,8 +134,9 @@ export class InvoiceRepository {
       where,
       include: { splits: { select: { personId: true, amountCents: true } } },
     })
-    return rows.map((row) => ({
-      ...toInvoiceRow(row, installmentOf(row)),
+    const installments = installmentsOf(rows)
+    return rows.map((row, index) => ({
+      ...toInvoiceRow(row, installments[index]!),
       label: row.displayName ?? row.merchant ?? purchaseName(row),
       installmentNumber: row.installmentNumber,
       installmentTotal: row.installmentTotal,
@@ -151,22 +153,22 @@ export class InvoiceRepository {
   }
 }
 
-function installmentOf(row: {
-  description: string
-  occurredAt: Date
-  installmentNumber: number | null
-  installmentTotal: number | null
-}): InvoiceRow['installment'] {
-  if (row.installmentNumber == null || row.installmentTotal == null) return null
-  return {
-    groupKey: installmentGroupKey({
-      description: row.description,
-      occurredAt: row.occurredAt,
-      installmentTotal: row.installmentTotal,
-      installmentNumber: row.installmentNumber,
-    }),
-    number: row.installmentNumber,
-  }
+function installmentsOf(
+  rows: {
+    accountId: string
+    description: string
+    occurredAt: Date
+    amountCents: number
+    installmentNumber: number | null
+    installmentTotal: number | null
+  }[],
+): InvoiceRow['installment'][] {
+  const keys = clusterInstallmentKeys(rows)
+  return rows.map((row, index) => {
+    const groupKey = keys[index]
+    if (row.installmentNumber == null || groupKey == null) return null
+    return { groupKey, number: row.installmentNumber }
+  })
 }
 
 function toInvoiceRow(
