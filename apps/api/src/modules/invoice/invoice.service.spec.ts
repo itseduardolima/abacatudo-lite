@@ -253,6 +253,15 @@ describe('InvoiceService', () => {
       expect(repo.sumPaymentsSince).toHaveBeenCalledWith('user-1', 'acc-1', expect.any(Date), 'bill-1')
     })
 
+    it('a última fatura fechada do Pluggy é reaproveitada entre chamadas seguidas', async () => {
+      const { service, pluggy } = setup({}, 76709, 66397)
+
+      await service.getForAccount('user-1', 'acc-1', monthKey(new Date()))
+      await service.getForAccount('user-1', 'acc-1', monthKey(new Date()))
+
+      expect(pluggy.getLastClosedBill).toHaveBeenCalledTimes(1)
+    })
+
     it('sem data nem dia de fechamento, não há como saber o que veio depois: não abate', async () => {
       const { service, repo } = setup({ closingDay: null }, 76709, 66397)
 

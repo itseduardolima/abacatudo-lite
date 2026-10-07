@@ -4,6 +4,7 @@ import { lastClosingCutoff, monthKey, nextClosingCutoff, resolveMonthRange } fro
 import { DomainError, NotFoundError } from '../../common/errors/domain.error'
 import { AccountRepository, type AccountWithPluggyItem } from '../account/account.repository'
 import { PluggyClient } from '../banking/pluggy/pluggy.client'
+import type { PluggyBill } from '../banking/pluggy/pluggy.schemas'
 import { PersonRepository } from '../person/person.repository'
 import {
   advancePaidCents,
@@ -17,9 +18,12 @@ import { estimateInstallments, type InstallmentSource } from './installment-fore
 import { InvoiceRepository } from './invoice.repository'
 import { buildPersonStatements, formatStatementText, type StatementRow } from './statement.mapper'
 
+const LAST_BILL_TTL_MS = 5 * 60 * 1000
+
 @Injectable()
 export class InvoiceService {
   private readonly logger = new Logger(InvoiceService.name)
+  private readonly lastBillCache = new Map<string, { bill: PluggyBill | null; expiresAt: number }>()
 
   constructor(
     private readonly repo: InvoiceRepository,
@@ -208,7 +212,7 @@ export class InvoiceService {
   private async closedBill(account: AccountWithPluggyItem, since: Date): Promise<{ id: string; cents: number } | null> {
     if (!account.externalAccountId) return null
     try {
-      const bill = await this.pluggy.getLastClosedBill(account.externalAccountId)
+      const bill = await this.lastClosedBill(account.externalAccountId)
       if (bill?.totalAmount == null || bill.dueDate.slice(0, 10) < since.toISOString().slice(0, 10)) return null
       return { id: bill.id, cents: Math.round(Math.abs(bill.totalAmount) * 100) }
     } catch (error) {
@@ -217,6 +221,14 @@ export class InvoiceService {
       )
       return null
     }
+  }
+
+  private async lastClosedBill(externalAccountId: string): Promise<PluggyBill | null> {
+    const cached = this.lastBillCache.get(externalAccountId)
+    if (cached && cached.expiresAt > Date.now()) return cached.bill
+    const bill = await this.pluggy.getLastClosedBill(externalAccountId)
+    this.lastBillCache.set(externalAccountId, { bill, expiresAt: Date.now() + LAST_BILL_TTL_MS })
+    return bill
   }
 
   // Parcelas estimadas (03-regras-negocio § Fatura prevista) só de mês posterior ao atual, e só do cartão
