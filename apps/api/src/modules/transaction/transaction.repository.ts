@@ -107,6 +107,32 @@ export class TransactionRepository {
     })
   }
 
+  findUnbilledPurchaseCandidates(
+    userId: string,
+    accountId: string,
+    installmentTotal: number,
+  ): Promise<
+    {
+      id: string
+      description: string
+      occurredAt: Date
+      installmentNumber: number | null
+      installmentTotal: number | null
+    }[]
+  > {
+    return this.prisma.transaction.findMany({
+      where: { userId, accountId, installmentTotal, billId: null, account: { type: 'CREDIT_CARD' } },
+      select: { id: true, description: true, occurredAt: true, installmentNumber: true, installmentTotal: true },
+    })
+  }
+
+  async setCancelledAt(userId: string, ids: string[], cancelledAt: Date | null): Promise<Prisma.BatchPayload> {
+    return this.prisma.transaction.updateMany({
+      where: { userId, id: { in: ids }, account: { type: 'CREDIT_CARD' } },
+      data: { cancelledAt },
+    })
+  }
+
   async updateDisplayName(userId: string, ids: string[], displayName: string | null): Promise<Prisma.BatchPayload> {
     return this.prisma.transaction.updateMany({
       where: { userId, id: { in: ids }, account: { type: 'CREDIT_CARD' } },

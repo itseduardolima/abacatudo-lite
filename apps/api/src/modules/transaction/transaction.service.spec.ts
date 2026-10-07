@@ -20,6 +20,8 @@ function repoMock() {
     findMany: jest.fn(),
     findForecast: jest.fn(),
     findPurchaseCandidates: jest.fn(),
+    findUnbilledPurchaseCandidates: jest.fn(),
+    setCancelledAt: jest.fn(),
     updateDisplayName: jest.fn(),
     findById: jest.fn(),
     updateCategory: jest.fn(),
@@ -75,6 +77,7 @@ function row(
     installmentTotal: null,
     installmentDueAt: null,
     displayName: null,
+    cancelledAt: null,
     billId: null,
     createdAt: new Date('2026-09-21T12:00:00.000Z'),
     updatedAt: new Date('2026-09-21T12:00:00.000Z'),
@@ -349,6 +352,95 @@ describe('TransactionService', () => {
 
     await expect(service.listByMonth('user-1', '2026-13')).rejects.toBeInstanceOf(DomainError)
     expect(repo.findMany).not.toHaveBeenCalled()
+  })
+
+  describe('updateCancellation', () => {
+    const occurredAt = new Date('2026-06-21T22:35:59.001Z')
+    const installment = (id: string, n: number, extra: Partial<TransactionRow> = {}) =>
+      row({ id, description: `Air fryer ${n}/12`, occurredAt, installmentNumber: n, installmentTotal: 12, ...extra })
+    const candidate = (id: string, name: string, n: number) => ({
+      id,
+      description: `${name} ${n}/12`,
+      occurredAt,
+      installmentNumber: n,
+      installmentTotal: 12,
+    })
+
+    it('404 quando a transação é de outro usuário', async () => {
+      const repo = repoMock()
+      repo.findById.mockResolvedValue(null)
+      const service = newService({ repo })
+
+      await expect(service.updateCancellation('user-2', 'tx-1', { cancelled: true })).rejects.toBeInstanceOf(
+        NotFoundError,
+      )
+      expect(repo.findById).toHaveBeenCalledWith('user-2', 'tx-1')
+      expect(repo.setCancelledAt).not.toHaveBeenCalled()
+    })
+
+    it('404 quando não é despesa nem estorno', async () => {
+      const repo = repoMock()
+      repo.findById.mockResolvedValue(row({ kind: 'CARD_PAYMENT' }))
+      const service = newService({ repo })
+
+      await expect(service.updateCancellation('user-1', 'tx-1', { cancelled: true })).rejects.toBeInstanceOf(
+        NotFoundError,
+      )
+      expect(repo.setCancelledAt).not.toHaveBeenCalled()
+    })
+
+    it('compra à vista: cancela só ela', async () => {
+      const repo = repoMock()
+      repo.findById.mockResolvedValue(row())
+      const service = newService({ repo })
+
+      await service.updateCancellation('user-1', 'tx-1', { cancelled: true })
+
+      expect(repo.findUnbilledPurchaseCandidates).not.toHaveBeenCalled()
+      expect(repo.setCancelledAt).toHaveBeenCalledWith('user-1', ['tx-1'], expect.any(Date))
+    })
+
+    it('compra parcelada: cancela todas as parcelas sem fatura da mesma compra, e só elas', async () => {
+      const repo = repoMock()
+      repo.findById.mockResolvedValue(installment('tx-3', 3))
+      repo.findUnbilledPurchaseCandidates.mockResolvedValue([
+        candidate('tx-3', 'Air fryer', 3),
+        candidate('tx-4', 'Air fryer', 4),
+        candidate('tx-12', 'Air fryer', 12),
+        candidate('outra', 'TV', 1),
+      ])
+      const service = newService({ repo })
+
+      await service.updateCancellation('user-1', 'tx-3', { cancelled: true })
+
+      expect(repo.findUnbilledPurchaseCandidates).toHaveBeenCalledWith('user-1', 'acc-1', 12)
+      expect(repo.setCancelledAt).toHaveBeenCalledWith('user-1', ['tx-3', 'tx-4', 'tx-12'], expect.any(Date))
+    })
+
+    it('parcela já faturada: mexe só nela', async () => {
+      const repo = repoMock()
+      repo.findById.mockResolvedValue(installment('tx-2', 2, { billId: 'bill-1' }))
+      const service = newService({ repo })
+
+      await service.updateCancellation('user-1', 'tx-2', { cancelled: true })
+
+      expect(repo.findUnbilledPurchaseCandidates).not.toHaveBeenCalled()
+      expect(repo.setCancelledAt).toHaveBeenCalledWith('user-1', ['tx-2'], expect.any(Date))
+    })
+
+    it('reativar limpa o cancelamento do grupo', async () => {
+      const repo = repoMock()
+      repo.findById.mockResolvedValue(installment('tx-3', 3, { cancelledAt: new Date() }))
+      repo.findUnbilledPurchaseCandidates.mockResolvedValue([
+        candidate('tx-3', 'Air fryer', 3),
+        candidate('tx-4', 'Air fryer', 4),
+      ])
+      const service = newService({ repo })
+
+      await service.updateCancellation('user-1', 'tx-3', { cancelled: false })
+
+      expect(repo.setCancelledAt).toHaveBeenCalledWith('user-1', ['tx-3', 'tx-4'], null)
+    })
   })
 
   describe('updateDisplayName', () => {

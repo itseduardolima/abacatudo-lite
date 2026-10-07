@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import type {
   CreateTransactionInput,
   Transaction,
+  UpdateTransactionCancellationInput,
   UpdateTransactionCategoryInput,
   UpdateTransactionDisplayNameInput,
   UpdateTransactionPersonInput,
@@ -149,6 +150,46 @@ export class TransactionService {
 
     const result = await this.repo.updateCategory(userId, id, input.categoryId)
     if (result.count === 0) throw NOT_FOUND()
+
+    const updated = await this.repo.findById(userId, id)
+    if (!updated) throw NOT_FOUND()
+    return toTransactionDto(updated, updated.splits)
+  }
+
+  async updateCancellation(
+    userId: string,
+    id: string,
+    input: UpdateTransactionCancellationInput,
+  ): Promise<Transaction> {
+    const existing = await this.repo.findById(userId, id)
+    if (!existing || (existing.kind !== 'EXPENSE' && existing.kind !== 'REFUND')) throw NOT_FOUND()
+
+    const ids = [id]
+    if (existing.installmentNumber != null && existing.installmentTotal != null && existing.billId === null) {
+      const groupKey = installmentGroupKey({
+        description: existing.description,
+        occurredAt: existing.occurredAt,
+        installmentTotal: existing.installmentTotal,
+        installmentNumber: existing.installmentNumber,
+      })
+      const candidates = await this.repo.findUnbilledPurchaseCandidates(
+        userId,
+        existing.accountId,
+        existing.installmentTotal,
+      )
+      for (const candidate of candidates) {
+        if (candidate.id === id || candidate.installmentTotal == null) continue
+        const key = installmentGroupKey({
+          description: candidate.description,
+          occurredAt: candidate.occurredAt,
+          installmentTotal: candidate.installmentTotal,
+          installmentNumber: candidate.installmentNumber,
+        })
+        if (key === groupKey) ids.push(candidate.id)
+      }
+    }
+
+    await this.repo.setCancelledAt(userId, ids, input.cancelled ? new Date() : null)
 
     const updated = await this.repo.findById(userId, id)
     if (!updated) throw NOT_FOUND()

@@ -3,6 +3,7 @@ import type { SplitPreview, Transaction } from '@gastos/shared'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { CreateTransactionDto } from './dto/create-transaction.dto'
 import { PreviewSplitDto } from './dto/preview-split.dto'
+import { UpdateTransactionCancellationDto } from './dto/update-transaction-cancellation.dto'
 import { UpdateTransactionCategoryDto } from './dto/update-transaction-category.dto'
 import { UpdateTransactionDisplayNameDto } from './dto/update-transaction-display-name.dto'
 import { UpdateTransactionPersonDto } from './dto/update-transaction-person.dto'
@@ -34,6 +35,15 @@ export class TransactionController {
     @Body() body: UpdateTransactionPersonDto,
   ): Promise<Transaction> {
     return this.transactions.updatePerson(userId, id, body)
+  }
+
+  @Patch(':id/cancellation')
+  updateCancellation(
+    @CurrentUser() userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: UpdateTransactionCancellationDto,
+  ): Promise<Transaction> {
+    return this.transactions.updateCancellation(userId, id, body)
   }
 
   @Patch(':id/category')

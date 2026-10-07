@@ -24,6 +24,7 @@ export function toTransactionDto(
     installmentTotal: row.installmentTotal,
     installmentDueAt: row.installmentDueAt?.toISOString() ?? null,
     displayName: row.displayName,
+    cancelledAt: row.cancelledAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     splits,
   }
