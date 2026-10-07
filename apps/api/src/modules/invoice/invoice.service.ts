@@ -8,6 +8,7 @@ import type { PluggyBill } from '../banking/pluggy/pluggy.schemas'
 import { PersonRepository } from '../person/person.repository'
 import {
   advancePaidCents,
+  previousBillRemainingCents,
   applyAdvancePayment,
   computeInvoice,
   keepNextDueInstallmentOnly,
@@ -44,8 +45,11 @@ export class InvoiceService {
     const selfId = await this.selfPersonId(userId)
     const lastForecastMonth = await this.lastForecastMonth(account)
 
+    const invoice = await this.invoiceForAccount(account, selfId, month)
+
     return {
-      ...(await this.invoiceForAccount(account, selfId, month)),
+      ...invoice,
+      payableCents: invoice.totalCents + invoice.previousBillRemainingCents,
       isForecast: this.isForecastFor(account, month),
       lastForecastMonth,
     }
@@ -162,7 +166,7 @@ export class InvoiceService {
     account: AccountWithPluggyItem,
     selfPersonId: string,
     month?: string,
-  ): Promise<Invoice & { estimatedCents: number; advancePaidCents: number }> {
+  ): Promise<Invoice & { estimatedCents: number; advancePaidCents: number; previousBillRemainingCents: number }> {
     if (this.isForecastFor(account, month)) {
       const range = resolveMonthRange(month as string)
       const [real, estimated] = await Promise.all([
@@ -174,12 +178,18 @@ export class InvoiceService {
         ...computeInvoice([...real, ...estimatedRows], selfPersonId),
         estimatedCents: computeInvoice(estimatedRows, selfPersonId).totalCents,
         advancePaidCents: 0,
+        previousBillRemainingCents: 0,
       }
     }
 
     if (account.source !== 'PLUGGY') {
       const rows = await this.repo.findRows(account.userId, resolveMonthRange(month), account.id)
-      return { ...computeInvoice(rows, selfPersonId), estimatedCents: 0, advancePaidCents: 0 }
+      return {
+        ...computeInvoice(rows, selfPersonId),
+        estimatedCents: 0,
+        advancePaidCents: 0,
+        previousBillRemainingCents: 0,
+      }
     }
 
     const [rows, estimated] = await Promise.all([
@@ -187,7 +197,8 @@ export class InvoiceService {
       this.openEstimatedInstallments(account),
     ])
     const estimatedRows = estimated.map(toInvoiceRow)
-    const advancePaid = await this.advancePaid(account)
+    const settlement = await this.closedBillSettlement(account)
+    const advancePaid = settlement.advancePaidCents
     return {
       ...applyAdvancePayment(
         computeInvoice([...keepNextDueInstallmentOnly(rows), ...estimatedRows], selfPersonId),
@@ -195,16 +206,23 @@ export class InvoiceService {
       ),
       estimatedCents: computeInvoice(estimatedRows, selfPersonId).totalCents,
       advancePaidCents: advancePaid,
+      previousBillRemainingCents: settlement.previousBillRemainingCents,
     }
   }
 
-  private async advancePaid(account: AccountWithPluggyItem): Promise<number> {
-    if (!account.closingDay) return 0
+  private async closedBillSettlement(
+    account: AccountWithPluggyItem,
+  ): Promise<{ advancePaidCents: number; previousBillRemainingCents: number }> {
+    const none = { advancePaidCents: 0, previousBillRemainingCents: 0 }
+    if (!account.closingDay) return none
     const since = lastClosingCutoff(account.closingDay)
     const bill = await this.closedBill(account, since)
-    if (!bill) return 0
+    if (!bill) return none
     const payments = await this.repo.sumPaymentsSince(account.userId, account.id, since, bill.id)
-    return advancePaidCents(payments, bill.cents)
+    return {
+      advancePaidCents: advancePaidCents(payments, bill.cents),
+      previousBillRemainingCents: previousBillRemainingCents(payments, bill.cents),
+    }
   }
 
   // O Pluggy só materializa a fatura depois de um tempo: a última que ele manda pode ser a do ciclo anterior (já

@@ -1,5 +1,6 @@
 import {
   advancePaidCents,
+  previousBillRemainingCents,
   applyAdvancePayment,
   computeInvoice,
   keepNextDueInstallmentOnly,
@@ -144,6 +145,21 @@ describe('mergeInvoices', () => {
 
   it('sem faturas, tudo zero', () => {
     expect(mergeInvoices([])).toEqual({ totalCents: 0, mineCents: 0, notMineCents: 0 })
+  })
+})
+
+describe('previousBillRemainingCents', () => {
+  it('fatura anterior de 432,48 com 420,60 pagos: faltam 11,88', () => {
+    expect(previousBillRemainingCents(42060, 43248)).toBe(1188)
+  })
+
+  it('pagou tudo ou mais: não falta nada', () => {
+    expect(previousBillRemainingCents(43248, 43248)).toBe(0)
+    expect(previousBillRemainingCents(50000, 43248)).toBe(0)
+  })
+
+  it('sem fatura anterior conhecida: nada a mostrar', () => {
+    expect(previousBillRemainingCents(42060, null)).toBe(0)
   })
 })
 

@@ -24,6 +24,8 @@ describe('accountInvoiceSchema', () => {
     notMineCents: 40,
     estimatedCents: 0,
     advancePaidCents: 0,
+    previousBillRemainingCents: 1188,
+    payableCents: 100,
     isForecast: true,
   }
 

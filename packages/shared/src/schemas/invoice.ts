@@ -20,6 +20,8 @@ export const accountInvoiceSchema = z
     estimatedCents: centsSchema,
     // Pagamento adiantado já abatido do total (o que passou da fatura fechada); 0 se não houve.
     advancePaidCents: centsSchema,
+    previousBillRemainingCents: centsSchema,
+    payableCents: centsSchema,
     lastForecastMonth: z
       .string()
       .regex(/^\d{4}-(0[1-9]|1[0-2])$/)

@@ -227,6 +227,28 @@ describe('InvoiceService', () => {
       expect(result.advancePaidCents).toBe(10312)
     })
 
+    it('pagamento menor que a fatura fechada: o que falta dela aparece à parte e soma no total a pagar', async () => {
+      const { service } = setup({}, 42060, 43248)
+
+      const result = await service.getForAccount('user-1', 'acc-1', monthKey(new Date()))
+
+      expect(result).toMatchObject({
+        totalCents: 155504,
+        advancePaidCents: 0,
+        previousBillRemainingCents: 1188,
+        payableCents: 156692,
+      })
+    })
+
+    it('pagamento maior que a fatura fechada: nada falta e o total a pagar é o da aberta', async () => {
+      const { service } = setup({}, 76709, 66397)
+
+      const result = await service.getForAccount('user-1', 'acc-1', monthKey(new Date()))
+
+      expect(result.previousBillRemainingCents).toBe(0)
+      expect(result.payableCents).toBe(result.totalCents)
+    })
+
     it('fatura do Pluggy que venceu antes do último fechamento é a do ciclo anterior: ignora, não abate', async () => {
       const { service, pluggy } = setup({}, 76709, 45440)
       pluggy.getLastClosedBill.mockResolvedValue({ id: 'bill-old', dueDate: '2026-09-13', totalAmount: 454.4 })
@@ -312,6 +334,8 @@ describe('InvoiceService', () => {
         notMineCents: 9000,
         estimatedCents: 0,
         advancePaidCents: 0,
+        previousBillRemainingCents: 0,
+        payableCents: 20000,
         isForecast: true,
         lastForecastMonth: shiftMonthKey(currentMonth, 5),
       })
@@ -334,6 +358,8 @@ describe('InvoiceService', () => {
         notMineCents: 0,
         estimatedCents: 0,
         advancePaidCents: 0,
+        previousBillRemainingCents: 0,
+        payableCents: 0,
         isForecast: true,
         lastForecastMonth: null,
       })

@@ -89,6 +89,11 @@ export function advancePaidCents(paymentsSinceClosingCents: number, closedBillCe
   return Math.max(paymentsSinceClosingCents - closedBillCents, 0)
 }
 
+export function previousBillRemainingCents(paymentsSinceClosingCents: number, closedBillCents: number | null): number {
+  if (closedBillCents === null) return 0
+  return Math.max(closedBillCents - paymentsSinceClosingCents, 0)
+}
+
 export function applyAdvancePayment(invoice: Invoice, advancePaid: number): Invoice {
   return {
     totalCents: invoice.totalCents - advancePaid,
