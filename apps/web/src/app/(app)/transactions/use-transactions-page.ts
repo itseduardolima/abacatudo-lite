@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import { useEstimatedInstallments } from '@/hooks/queries/use-estimated-installments'
 import { useForecastMonth } from '@/hooks/use-forecast-month'
 import { useAccounts } from '@/hooks/queries/use-accounts'
 import { useCategories } from '@/hooks/queries/use-categories'
@@ -71,6 +72,7 @@ export function useTransactionsPage() {
   const forecastMonth = forecast.isForecast ? forecast.month : undefined
   const invoice = useInvoice(selectedAccountId, forecastMonth)
   const transactions = useTransactions(forecastMonth)
+  const estimatedInstallments = useEstimatedInstallments(selectedAccountId, forecast.month)
   const [segment, setSegment] = useState<Segment>('all')
 
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -278,6 +280,7 @@ export function useTransactionsPage() {
     selectedAccountId,
     setSelectedAccountId,
     invoice: invoice.data,
+    estimatedInstallments: estimatedInstallments.data,
     forecast,
     segment,
     setSegment,
