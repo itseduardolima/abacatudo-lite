@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import type { z } from 'zod'
 import { DomainError } from '../../../common/errors/domain.error'
@@ -40,6 +40,7 @@ export class PluggyNotConfiguredError extends DomainError {
 
 @Injectable()
 export class PluggyClient {
+  private readonly logger = new Logger(PluggyClient.name)
   private cachedApiKey: { value: string; expiresAt: number } | null = null
 
   constructor(private readonly config: ConfigService) {}
@@ -128,7 +129,10 @@ export class PluggyClient {
       body: JSON.stringify({ clientId, clientSecret }),
     })
     const parsed = pluggyAuthResponseSchema.safeParse(await response.json().catch(() => null))
-    if (!parsed.success) throw new PluggyUnavailableError()
+    if (!parsed.success) {
+      this.logger.error(`POST /auth: resposta fora do schema (${parsed.error.message})`)
+      throw new PluggyUnavailableError()
+    }
 
     const expiresAt = decodeJwtExpiryMs(parsed.data.apiKey) ?? Date.now() + 60 * 60 * 1000
     this.cachedApiKey = { value: parsed.data.apiKey, expiresAt: expiresAt - 60_000 }
@@ -149,7 +153,10 @@ export class PluggyClient {
       body: body ? JSON.stringify(body) : undefined,
     })
     const parsed = schema.safeParse(await response.json().catch(() => null))
-    if (!parsed.success) throw new PluggyUnavailableError()
+    if (!parsed.success) {
+      this.logger.error(`${method} ${safeUrl(url)}: resposta fora do schema (${parsed.error.message})`)
+      throw new PluggyUnavailableError()
+    }
     return parsed.data
   }
 
@@ -168,21 +175,32 @@ export class PluggyClient {
           continue
         }
         if (response.status >= 500) {
+          this.logger.warn(`${init.method} ${safeUrl(url)}: HTTP ${response.status} (tentativa ${attempt}/${MAX_ATTEMPTS})`)
           if (attempt === MAX_ATTEMPTS) throw new PluggyUnavailableError()
           await sleep(2 ** attempt * 200)
           continue
         }
-        if (!response.ok && !treatAsSuccess.includes(response.status)) throw new PluggyUnavailableError()
+        if (!response.ok && !treatAsSuccess.includes(response.status)) {
+          this.logger.error(`${init.method} ${safeUrl(url)}: HTTP ${response.status}`)
+          throw new PluggyUnavailableError()
+        }
         return response
       } catch (error) {
         clearTimeout(timer)
         if (error instanceof DomainError) throw error
+        const cause = error instanceof Error ? (error.cause as Error | undefined)?.message ?? error.message : String(error)
+        this.logger.warn(`${init.method} ${safeUrl(url)}: falha de rede/timeout (${cause}) (tentativa ${attempt}/${MAX_ATTEMPTS})`)
         if (attempt === MAX_ATTEMPTS) throw new PluggyUnavailableError()
         await sleep(2 ** attempt * 200)
       }
     }
     throw new PluggyUnavailableError()
   }
+}
+
+// Só o path: a querystring pode ter ids de item/conta.
+function safeUrl(url: string): string {
+  return url.split('?')[0]!.replace(BASE_URL, '')
 }
 
 function sleep(ms: number): Promise<void> {
