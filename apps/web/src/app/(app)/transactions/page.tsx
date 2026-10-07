@@ -2,7 +2,6 @@
 
 import { Suspense } from 'react'
 import type { Segment } from './use-transactions-page'
-import { EstimatedInstallmentsSection } from './estimated-installments-section'
 import { StatementsSheet } from './statements-sheet'
 import { TransactionSheet } from './transaction-sheet'
 import { Button } from '@/components/ui/Button'
@@ -44,7 +43,6 @@ function TransactionsContent() {
     selectedAccountId,
     setSelectedAccountId,
     invoice,
-    estimatedInstallments,
     forecast,
     segment,
     setSegment,
@@ -198,12 +196,6 @@ function TransactionsContent() {
               Já abatido <MoneyText cents={invoice.advancePaidCents} className="!text-xs" /> de pagamento adiantado.
             </p>
           )}
-          {invoice.estimatedCents > 0 && (
-            <p className="text-xs text-muted">
-              Inclui <MoneyText cents={invoice.estimatedCents} className="!text-xs" /> de parcelas estimadas (o banco
-              ainda não lançou).
-            </p>
-          )}
           <Button variant="outline" onClick={statementsSheet.open}>
             Enviar contas
           </Button>
@@ -227,7 +219,7 @@ function TransactionsContent() {
         </div>
       )}
 
-      {selectedAccount && groups.length === 0 && !isLoading && !estimatedInstallments?.items.length && (
+      {selectedAccount && groups.length === 0 && !isLoading && (
         <p className="text-text">
           {forecast.isForecast ? 'Nenhuma parcela prevista neste mês.' : 'Nenhum lançamento neste mês.'}
         </p>
@@ -301,8 +293,6 @@ function TransactionsContent() {
           ))}
         </div>
       ))}
-
-      <EstimatedInstallmentsSection data={estimatedInstallments} />
 
       {statementsSheet.isOpen && (
         <StatementsSheet
