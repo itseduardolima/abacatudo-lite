@@ -1300,3 +1300,6 @@ typecheck/lint/build limpos).
 - [x] Cancelar compra: `Transaction.cancelledAt`, `PATCH /transactions/:id/cancellation` (grupo de parcelas sem
       fatura), fora de fatura, orçamento, relatórios e extratos, linha riscada com selo na Fatura, reversível
       (2026-10-07).
+
+- [x] Fatura aberta: compra à vista pendente e sem fatura entra mesmo antes do fechamento (Pix no crédito do
+      Nubank), na fatura, na lista e na mensagem de conta (2026-10-07).

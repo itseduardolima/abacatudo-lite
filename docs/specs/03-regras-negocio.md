@@ -122,7 +122,8 @@ Detalhe e números em [07-integracao-bancaria](./07-integracao-bancaria.md) § F
   sem nenhum dos dois, não abate nada. Vale na Início e na tela da fatura, em todos os cartões. Cartão
   com `closingDay` (ex.: Pic Pay, que o Pluggy não manda fatura): só lançamento a partir do último fechamento é
   fatura aberta. O próprio dia de fechamento já conta, à meia-noite de Brasília (como no Nubank); parcela vale
-  pela data de vencimento, não pela da compra. O dia é fixo: o banco antecipa o fechamento em fim de semana e
+  pela data de vencimento, não pela da compra. Compra à vista **pendente e sem fatura** entra na aberta mesmo com
+  data anterior ao fechamento (o banco ainda não a cobrou em nenhuma fatura; ex.: Pix no crédito do Nubank). O dia é fixo: o banco antecipa o fechamento em fim de semana e
   feriado, então pode errar uns dias (limitação conhecida; a data do último fechamento chegou a existir e foi
   removida a pedido).
 - **Cartão adicional**: o final do cartão de cada transação (`cardNumber`) já resolve a pessoa via

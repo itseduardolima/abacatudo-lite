@@ -8,7 +8,9 @@ const OCTOBER = { start: new Date('2026-10-01T04:00:00.000Z'), end: new Date('20
 function row(overrides: Partial<Parameters<typeof isInOpenCycle>[0]> = {}) {
   return {
     billId: null,
+    status: 'POSTED' as const,
     occurredAt: new Date('2026-10-03T15:00:00.000Z'),
+    installmentNumber: null,
     installmentDueAt: null,
     account: { closingDay: 27 },
     ...overrides,
@@ -22,6 +24,21 @@ describe('isInOpenCycle', () => {
 
   it('compra antes do fechamento e fora do mês é da fatura fechada', () => {
     expect(isInOpenCycle(row({ occurredAt: new Date('2026-09-20T15:00:00.000Z') }), OCTOBER, NOW)).toBe(false)
+  })
+
+  it('compra à vista pendente e sem fatura entra na fatura aberta mesmo antes do fechamento', () => {
+    const pending = row({ status: 'PENDING', occurredAt: new Date('2026-09-20T15:00:00.000Z') })
+    expect(isInOpenCycle(pending, OCTOBER, NOW)).toBe(true)
+  })
+
+  it('parcela pendente antes do fechamento continua valendo pela data do vencimento', () => {
+    const installment = row({
+      status: 'PENDING',
+      installmentNumber: 5,
+      occurredAt: new Date('2026-06-25T15:00:00.000Z'),
+      installmentDueAt: new Date('2026-09-26T15:00:00.000Z'),
+    })
+    expect(isInOpenCycle(installment, OCTOBER, NOW)).toBe(false)
   })
 
   it('parcela comprada em agosto que vence em outubro está na fatura aberta (vale a data do vencimento)', () => {

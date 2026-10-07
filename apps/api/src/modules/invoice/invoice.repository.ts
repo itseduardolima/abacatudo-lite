@@ -7,7 +7,13 @@ import type { StatementRow } from './statement.mapper'
 
 function openSince(after?: Date): Prisma.TransactionWhereInput {
   if (!after) return {}
-  return { OR: [{ installmentDueAt: null, occurredAt: { gte: after } }, { installmentDueAt: { gte: after } }] }
+  return {
+    OR: [
+      { installmentDueAt: null, occurredAt: { gte: after } },
+      { installmentDueAt: { gte: after } },
+      { installmentNumber: null, status: 'PENDING' },
+    ],
+  }
 }
 
 @Injectable()

@@ -9,7 +9,9 @@ const SPLITS_SELECT = { splits: { select: { personId: true, amountCents: true } 
 export function isInOpenCycle(
   row: {
     billId: string | null
+    status: Transaction['status']
     occurredAt: Date
+    installmentNumber: number | null
     installmentDueAt: Date | null
     account: { closingDay: number | null }
   },
@@ -17,6 +19,7 @@ export function isInOpenCycle(
   now: Date = new Date(),
 ): boolean {
   if (row.billId !== null || !row.account.closingDay) return true
+  if (row.installmentNumber === null && row.status === 'PENDING') return true
   if (row.occurredAt >= range.start && row.occurredAt < range.end) return true
   return (row.installmentDueAt ?? row.occurredAt) >= lastClosingCutoff(row.account.closingDay, now)
 }
