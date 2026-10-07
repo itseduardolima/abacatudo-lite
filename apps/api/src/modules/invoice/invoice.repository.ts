@@ -3,7 +3,6 @@ import { installmentBaseName, installmentGroupKey } from '../../common/installme
 import { PRISMA, type PrismaService } from '../../prisma/prisma.client'
 import type { Prisma } from '@prisma/client'
 import type { InvoiceRow } from './invoice.mapper'
-import type { InstallmentSource } from './installment-forecast.mapper'
 import type { StatementRow } from './statement.mapper'
 
 function openSince(after?: Date): Prisma.TransactionWhereInput {
@@ -134,44 +133,6 @@ export class InvoiceRepository {
       installmentTotal: row.installmentTotal,
       sortAt: row.installmentDueAt ?? row.occurredAt,
     }))
-  }
-
-  // Todas as parcelas conhecidas de cartões PLUGGY (lançadas ou não, já faturadas ou não): a de maior número
-  // de cada compra é a referência pra estimar as que o banco ainda não mandou.
-  async findInstallmentSources(userId: string, accountId: string): Promise<InstallmentSource[]> {
-    const rows = await this.prisma.transaction.findMany({
-      where: {
-        userId,
-        kind: 'EXPENSE',
-        installmentNumber: { not: null },
-        installmentTotal: { not: null },
-        installmentDueAt: { not: null },
-        account: { id: accountId, type: 'CREDIT_CARD', source: 'PLUGGY' },
-      },
-      include: { splits: { select: { personId: true, amountCents: true } } },
-    })
-    return rows.flatMap((row) =>
-      row.installmentNumber == null || row.installmentTotal == null || row.installmentDueAt == null
-        ? []
-        : [
-            {
-              groupKey: installmentGroupKey({
-                description: row.description,
-                occurredAt: row.occurredAt,
-                installmentTotal: row.installmentTotal,
-                installmentNumber: row.installmentNumber,
-              }),
-              number: row.installmentNumber,
-              total: row.installmentTotal,
-              dueAt: row.installmentDueAt,
-              amountCents: row.amountCents,
-              kind: 'EXPENSE' as const,
-              personId: row.personId,
-              splits: row.splits,
-              label: row.displayName ?? row.merchant ?? purchaseName(row),
-            },
-          ],
-    )
   }
 
   async findLastInstallmentDueAt(userId: string, accountId: string): Promise<Date | null> {
