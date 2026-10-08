@@ -1312,3 +1312,11 @@ typecheck/lint/build limpos).
 
 - [x] Sincronizar pede ao Pluggy para atualizar o item no banco antes de ler (espera até 40 s, segue com o
       cache se falhar) (2026-10-07).
+
+- [x] Fatura aberta: compra pendente sem fatura só entra se for dos últimos 7 dias (Pic Pay e BB nunca mandam
+      lançada e traziam compras de ciclos já pagos); pendente repetida do pagamento de fatura do Nubank não é
+      gravada e a já gravada é mesclada na lançada (2026-10-08).
+
+- [x] Fechamento antecipado pelo banco: o início do ciclo aberto sai do dia seguinte à última compra à vista ligada
+      à fatura fechada (até 3 dias antes do corte nominal), sem o usuário trocar o dia de fechamento todo mês
+      (Nubank, fechou 26/09 em vez de 27) (2026-10-08).

@@ -100,7 +100,9 @@ da fatura, dos dois lados) e `TRANSFER`.
 - **Pendente vs. lançada**: transação `PENDING` do banco pode mudar de valor
   ou sumir; quando vira lançada, atualiza a mesma linha (mesmo `externalId`
   ou reconciliação por valor+data+merchant), preservando a classificação do
-  User.
+  User. O Nubank também manda a pendente de um pagamento de fatura
+  junto da lançada, com outro `externalId`, na mesma resposta: a pendente sem fatura com a lançada de mesmo tipo, valor e dia
+  (Brasília) não é gravada (e a já gravada é mesclada na lançada), senão o pagamento contaria em dobro.
 - **Classificação do User nunca é sobrescrita por sincronização.** Sync só
   atualiza campos de origem (valor, data, descrição, status).
 - `REFUND` reduz o gasto da categoria/pessoa da compra original quando
@@ -126,9 +128,11 @@ Detalhe e números em [07-integracao-bancaria](./07-integracao-bancaria.md) § F
   com `closingDay` (ex.: Pic Pay, que o Pluggy não manda fatura): só lançamento a partir do último fechamento é
   fatura aberta. O próprio dia de fechamento já conta, à meia-noite de Brasília (como no Nubank); parcela vale
   pela data de vencimento, não pela da compra. Compra à vista **pendente e sem fatura** entra na aberta mesmo com
-  data anterior ao fechamento (o banco ainda não a cobrou em nenhuma fatura; ex.: Pix no crédito do Nubank). O dia é fixo: o banco antecipa o fechamento em fim de semana e
-  feriado, então pode errar uns dias (limitação conhecida; a data do último fechamento chegou a existir e foi
-  removida a pedido).
+  data anterior ao fechamento (o banco ainda não a cobrou em nenhuma fatura; ex.: Pix no crédito do Nubank), mas só
+  se for dos últimos 7 dias: o Pic Pay e o BB nunca mandam lançada, e uma pendente mais antiga já está numa fatura fechada. O dia informado é o nominal: o banco antecipa o fechamento em fim de
+  semana e feriado (Nubank, 27/09/2026, domingo, fechou no sábado 26). O início do ciclo é corrigido pelos dados: vale o dia
+  seguinte (Brasília) à última compra à vista ligada a uma fatura fechada, se cair até 3 dias antes do corte nominal. Mais
+  longe disso é fatura que o Pluggy ainda não ligou (BB), e o corte fica no dia nominal. Nada é gravado: recalcula a cada leitura.
 - **Cartão adicional**: o final do cartão de cada transação (`cardNumber`) já resolve a pessoa via
   `CardHolderHint`, antes de qualquer classificação manual.
 
