@@ -4,7 +4,7 @@ import { PENDING_LOOKBACK_MS } from '../../common/date/timezone'
 import { PRISMA, type PrismaService } from '../../prisma/prisma.client'
 import type { Prisma } from '@prisma/client'
 import type { InvoiceRow } from './invoice.mapper'
-import type { InstallmentSource } from './installment-forecast.mapper'
+import { resolveInstallmentDueDates, type InstallmentSource } from './installment-forecast.mapper'
 import type { StatementRow } from './statement.mapper'
 
 function openSince(after?: Date): Prisma.TransactionWhereInput {
@@ -179,22 +179,15 @@ export class InvoiceRepository {
         kind: { in: ['EXPENSE', 'CARD_PAYMENT'] },
         installmentNumber: { not: null },
         installmentTotal: { not: null },
-        installmentDueAt: { not: null },
         account: { id: accountId, type: 'CREDIT_CARD', source: 'PLUGGY' },
       },
       include: { splits: { select: { personId: true, amountCents: true } } },
     })
     const keys = clusterInstallmentKeys(rows)
     const cancelledGroups = new Set(rows.flatMap((row, index) => (row.cancelledAt && keys[index] ? [keys[index]] : [])))
-    return rows.flatMap((row, index) => {
+    const raw = rows.flatMap((row, index) => {
       const groupKey = keys[index]
-      if (
-        row.installmentNumber == null ||
-        row.installmentTotal == null ||
-        row.installmentDueAt == null ||
-        !groupKey ||
-        cancelledGroups.has(groupKey)
-      ) {
+      if (row.installmentNumber == null || row.installmentTotal == null || !groupKey || cancelledGroups.has(groupKey)) {
         return []
       }
       return [
@@ -211,6 +204,7 @@ export class InvoiceRepository {
         },
       ]
     })
+    return resolveInstallmentDueDates(raw)
   }
 
   async findLastInstallmentDueAt(userId: string, accountId: string): Promise<Date | null> {

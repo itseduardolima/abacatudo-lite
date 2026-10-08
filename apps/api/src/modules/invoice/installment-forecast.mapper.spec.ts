@@ -1,5 +1,11 @@
 import { installmentGroupKey } from '../../common/installment-group'
-import { addMonthsKeepingDay, estimateInstallments, type InstallmentSource } from './installment-forecast.mapper'
+import {
+  addMonthsKeepingDay,
+  estimateInstallments,
+  resolveInstallmentDueDates,
+  type InstallmentSource,
+  type RawInstallmentSource,
+} from './installment-forecast.mapper'
 
 function source(overrides: Partial<InstallmentSource> = {}): InstallmentSource {
   return {
@@ -106,5 +112,50 @@ describe('estimateInstallments com as descrições reais do BB', () => {
     const estimated = estimateInstallments(sources)
 
     expect(estimated.map((item) => item.number)).toEqual([9, 10, 11, 12])
+  })
+})
+
+describe('resolveInstallmentDueDates', () => {
+  const raw = (overrides: Partial<RawInstallmentSource> = {}): RawInstallmentSource => ({
+    ...source(),
+    ...overrides,
+  })
+
+  it('parcela mais alta sem data de vencimento ganha a data da última com data, mês a mês', () => {
+    const resolved = resolveInstallmentDueDates([
+      raw({ number: 7, dueAt: new Date('2026-08-19T03:00:00.000Z') }),
+      raw({ number: 8, dueAt: null }),
+    ])
+    expect(resolved.map((item) => [item.number, item.dueAt.toISOString()])).toEqual([
+      [7, '2026-08-19T03:00:00.000Z'],
+      [8, '2026-09-19T03:00:00.000Z'],
+    ])
+  })
+
+  it('sem nenhuma parcela com data no grupo, a sem data não serve de referência', () => {
+    expect(resolveInstallmentDueDates([raw({ number: 8, dueAt: null })])).toEqual([])
+  })
+
+  it('parcela sem data de número menor que a última com data é descartada', () => {
+    const resolved = resolveInstallmentDueDates([
+      raw({ number: 7, dueAt: new Date('2026-08-19T03:00:00.000Z') }),
+      raw({ number: 3, dueAt: null }),
+    ])
+    expect(resolved.map((item) => item.number)).toEqual([7])
+  })
+
+  it('a estimativa herda o rateio da parcela sem data, que é a mais alta', () => {
+    const splits = [
+      { personId: 'sogro', amountCents: 18393 },
+      { personId: 'self-1', amountCents: 4598 },
+    ]
+    const estimated = estimateInstallments(
+      resolveInstallmentDueDates([
+        raw({ number: 7, total: 12, personId: 'self-1', dueAt: new Date('2026-08-19T03:00:00.000Z') }),
+        raw({ number: 8, total: 12, personId: null, splits, dueAt: null }),
+      ]),
+    )
+    expect(estimated[0]).toMatchObject({ number: 9, personId: null, splits })
+    expect(estimated[0]?.dueAt.toISOString()).toBe('2026-10-19T03:00:00.000Z')
   })
 })

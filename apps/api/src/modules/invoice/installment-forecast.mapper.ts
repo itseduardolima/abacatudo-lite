@@ -10,6 +10,8 @@ export interface InstallmentSource {
   label: string
 }
 
+export type RawInstallmentSource = Omit<InstallmentSource, 'dueAt'> & { dueAt: Date | null }
+
 const MAX_INSTALLMENTS = 120
 
 // Soma meses mantendo o dia do vencimento (limitado ao fim do mês: 31/01 + 1 mês = 28/02). Datas de parcela
@@ -54,4 +56,19 @@ export function estimateInstallments(sources: InstallmentSource[]): InstallmentS
     }
   }
   return estimated
+}
+
+export function resolveInstallmentDueDates(sources: RawInstallmentSource[]): InstallmentSource[] {
+  const latestDated = new Map<string, InstallmentSource>()
+  for (const source of sources) {
+    if (!source.dueAt) continue
+    const current = latestDated.get(source.groupKey)
+    if (!current || source.number > current.number) latestDated.set(source.groupKey, { ...source, dueAt: source.dueAt })
+  }
+  return sources.flatMap((source) => {
+    if (source.dueAt) return [{ ...source, dueAt: source.dueAt }]
+    const base = latestDated.get(source.groupKey)
+    if (!base || source.number <= base.number) return []
+    return [{ ...source, dueAt: addMonthsKeepingDay(base.dueAt, source.number - base.number) }]
+  })
 }
