@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { clusterInstallmentKeys, installmentBaseName } from '../../common/installment-group'
+import { PENDING_LOOKBACK_MS } from '../../common/date/timezone'
 import { PRISMA, type PrismaService } from '../../prisma/prisma.client'
 import type { Prisma } from '@prisma/client'
 import type { InvoiceRow } from './invoice.mapper'
@@ -8,11 +9,12 @@ import type { StatementRow } from './statement.mapper'
 
 function openSince(after?: Date): Prisma.TransactionWhereInput {
   if (!after) return {}
+  const recentPending = new Date(Date.now() - PENDING_LOOKBACK_MS)
   return {
     OR: [
       { installmentDueAt: null, occurredAt: { gte: after } },
       { installmentDueAt: { gte: after } },
-      { installmentNumber: null, status: 'PENDING' },
+      { installmentNumber: null, status: 'PENDING', occurredAt: { gte: recentPending } },
     ],
   }
 }

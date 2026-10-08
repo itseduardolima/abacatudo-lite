@@ -27,8 +27,13 @@ describe('isInOpenCycle', () => {
   })
 
   it('compra à vista pendente e sem fatura entra na fatura aberta mesmo antes do fechamento', () => {
-    const pending = row({ status: 'PENDING', occurredAt: new Date('2026-09-20T15:00:00.000Z') })
+    const pending = row({ status: 'PENDING', occurredAt: new Date('2026-09-26T23:30:00.000Z') })
     expect(isInOpenCycle(pending, OCTOBER, NOW)).toBe(true)
+  })
+
+  it('compra à vista pendente há mais de 7 dias não entra: o banco já a cobrou na fatura fechada', () => {
+    const stale = row({ status: 'PENDING', occurredAt: new Date('2026-09-20T15:00:00.000Z') })
+    expect(isInOpenCycle(stale, OCTOBER, NOW)).toBe(false)
   })
 
   it('parcela pendente antes do fechamento continua valendo pela data do vencimento', () => {

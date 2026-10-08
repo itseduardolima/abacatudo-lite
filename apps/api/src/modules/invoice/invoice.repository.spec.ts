@@ -12,6 +12,9 @@ function fakePrisma() {
 
 const RANGE = { start: new Date('2026-10-01T04:00:00.000Z'), end: new Date('2026-11-01T04:00:00.000Z') }
 
+const NOW_MS = new Date('2026-10-08T14:00:00.000Z').getTime()
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+
 describe('InvoiceRepository: compra cancelada fica fora da conta', () => {
   it.each([
     ['findRows', (repo: InvoiceRepository) => repo.findRows('user-1', RANGE)],
@@ -54,14 +57,16 @@ describe('InvoiceRepository: fatura aberta com data de fechamento', () => {
   it.each([
     ['findOpenRows', (repo: InvoiceRepository) => repo.findOpenRows('user-1', 'acc-1', AFTER)],
     ['findStatementOpenRows', (repo: InvoiceRepository) => repo.findStatementOpenRows('user-1', 'acc-1', AFTER)],
-  ])('%s inclui compra à vista pendente sem fatura, qualquer que seja a data', async (_name, call) => {
+  ])('%s inclui compra à vista pendente sem fatura só se for dos últimos 7 dias', async (_name, call) => {
+    jest.spyOn(Date, 'now').mockReturnValue(NOW_MS)
     const { prisma, transaction } = fakePrisma()
     await call(new InvoiceRepository(prisma))
     expect(transaction.findMany.mock.calls[0][0].where.OR).toEqual([
       { installmentDueAt: null, occurredAt: { gte: AFTER } },
       { installmentDueAt: { gte: AFTER } },
-      { installmentNumber: null, status: 'PENDING' },
+      { installmentNumber: null, status: 'PENDING', occurredAt: { gte: new Date(NOW_MS - SEVEN_DAYS_MS) } },
     ])
+    jest.restoreAllMocks()
   })
 })
 
