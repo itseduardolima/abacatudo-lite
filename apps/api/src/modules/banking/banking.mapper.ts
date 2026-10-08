@@ -1,5 +1,5 @@
 import type { Prisma, AccountType, TransactionKind, TransactionStatus } from '@prisma/client'
-import { dayFromDateString } from '../../common/date/timezone'
+import { brasiliaDayStart, dayFromDateString } from '../../common/date/timezone'
 import type { PluggyAccount, PluggyTransaction } from './pluggy/pluggy.schemas'
 
 export { dayFromDateString }
@@ -65,6 +65,31 @@ export function mapTransaction(tx: PluggyTransaction, isCreditCard: boolean): Ma
     installmentDueAt: card?.installmentNumber != null ? dayFromDateString(tx.date) : null,
     billId: card?.billId ?? null,
   }
+}
+
+export interface SettledPendingTwin {
+  pendingId: string
+  postedId: string
+}
+
+export function findSettledPendingTwins(txs: MappedTransaction[]): SettledPendingTwin[] {
+  const payments = txs.filter((tx) => tx.kind === 'CARD_PAYMENT' && tx.installmentNumber == null)
+  const posted = payments.filter((tx) => tx.status === 'POSTED' && tx.billId != null)
+  const taken = new Set<string>()
+  const twins: SettledPendingTwin[] = []
+  for (const pending of payments.filter((tx) => tx.status === 'PENDING' && tx.billId == null)) {
+    const day = brasiliaDayStart(new Date(pending.occurredAt as Date | string)).getTime()
+    const twin = posted.find(
+      (tx) =>
+        !taken.has(tx.externalId) &&
+        tx.amountCents === pending.amountCents &&
+        brasiliaDayStart(new Date(tx.occurredAt as Date | string)).getTime() === day,
+    )
+    if (!twin) continue
+    taken.add(twin.externalId)
+    twins.push({ pendingId: pending.externalId, postedId: twin.externalId })
+  }
+  return twins
 }
 
 export function mapAccountFields(pluggyAccount: PluggyAccount): {

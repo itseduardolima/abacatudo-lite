@@ -14,7 +14,14 @@ import { PersonRepository } from '../person/person.repository'
 import { normalizeMerchant } from '../rule/normalize-merchant'
 import { RuleRepository } from '../rule/rule.repository'
 import { BankingSyncRepository } from './banking-sync.repository'
-import { mapAccountFields, mapTransaction, reconnectWarningDays } from './banking.mapper'
+import {
+  findSettledPendingTwins,
+  mapAccountFields,
+  mapTransaction,
+  reconnectWarningDays,
+  type MappedTransaction,
+  type SettledPendingTwin,
+} from './banking.mapper'
 import { PluggyClient } from './pluggy/pluggy.client'
 import { PluggyItemRepository } from './pluggy-item.repository'
 
@@ -171,6 +178,24 @@ export class BankingService {
     return this.connect()
   }
 
+  private async mergePendingDuplicates(
+    userId: string,
+    accountId: string,
+    twins: SettledPendingTwin[],
+    seen: MappedTransaction[],
+  ): Promise<void> {
+    try {
+      await this.sync.mergeSettledPending(userId, accountId, twins)
+      await this.sync.mergeOrphanPending(
+        userId,
+        accountId,
+        seen.map((tx) => tx.externalId),
+      )
+    } catch (error) {
+      this.logger.warn(`Não foi possível mesclar pendentes duplicadas da conta ${accountId}: ${describeError(error)}`)
+    }
+  }
+
   private async refreshFromBank(userId: string, item: PluggyItemRow): Promise<void> {
     try {
       let remote = await this.pluggy.refreshItem(item.pluggyItemId)
@@ -239,27 +264,33 @@ export class BankingService {
       )
       accountsSynced++
 
+      const mappedAll: MappedTransaction[] = []
       let cursor: string | undefined
       do {
         const page = await this.pluggy.listTransactions(pluggyAccount.id, cursor)
-        for (const tx of page.results) {
-          const mapped = mapTransaction(tx, true)
-          const merchant = mapped.merchant ?? null
-          const cardLast4 = mapped.cardLast4 ?? null
-          const personId = resolvePersonId(
-            account.id,
-            cardLast4,
-            merchant,
-            hintByAccountCard,
-            ruleByMerchant,
-            selfPerson.id,
-          )
-          const categoryId = resolveCategoryId(merchant, ruleByMerchant)
-          await this.sync.upsertTransaction(userId, account.id, personId, categoryId, mapped)
-          transactionsSynced++
-        }
+        for (const tx of page.results) mappedAll.push(mapTransaction(tx, true))
         cursor = page.next ?? undefined
       } while (cursor)
+
+      const twins = findSettledPendingTwins(mappedAll)
+      const droppedPendingIds = new Set(twins.map((twin) => twin.pendingId))
+      for (const mapped of mappedAll) {
+        if (droppedPendingIds.has(mapped.externalId)) continue
+        const merchant = mapped.merchant ?? null
+        const cardLast4 = mapped.cardLast4 ?? null
+        const personId = resolvePersonId(
+          account.id,
+          cardLast4,
+          merchant,
+          hintByAccountCard,
+          ruleByMerchant,
+          selfPerson.id,
+        )
+        const categoryId = resolveCategoryId(merchant, ruleByMerchant)
+        await this.sync.upsertTransaction(userId, account.id, personId, categoryId, mapped)
+        transactionsSynced++
+      }
+      await this.mergePendingDuplicates(userId, account.id, twins, mappedAll)
     }
 
     await this.items.update(userId, item.id, { lastSyncAt: new Date() })

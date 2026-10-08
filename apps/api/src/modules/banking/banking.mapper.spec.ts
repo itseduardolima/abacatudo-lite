@@ -1,5 +1,12 @@
 import type { PluggyAccount, PluggyTransaction } from './pluggy/pluggy.schemas'
-import { mapAccountFields, mapTransaction, reconnectWarningDays, resolveKind } from './banking.mapper'
+import {
+  findSettledPendingTwins,
+  mapAccountFields,
+  mapTransaction,
+  reconnectWarningDays,
+  resolveKind,
+  type MappedTransaction,
+} from './banking.mapper'
 
 function tx(overrides: Partial<PluggyTransaction> = {}): PluggyTransaction {
   return {
@@ -185,5 +192,83 @@ describe('reconnectWarningDays', () => {
 
   it('já vencido continua no limiar mais urgente, nunca vira null — sem sync não sabemos que venceu de verdade', () => {
     expect(reconnectWarningDays(new Date('2026-09-20T12:00:00.000Z'), now)).toBe(7)
+  })
+})
+
+describe('findSettledPendingTwins', () => {
+  function mapped(overrides: Partial<MappedTransaction>): MappedTransaction {
+    return {
+      externalId: 'tx',
+      kind: 'CARD_PAYMENT',
+      status: 'PENDING',
+      amountCents: 54646,
+      occurredAt: new Date('2026-09-30T18:33:06.490Z'),
+      installmentNumber: null,
+      billId: null,
+      ...overrides,
+    } as MappedTransaction
+  }
+  const posted = mapped({
+    externalId: 'posted',
+    status: 'POSTED',
+    occurredAt: new Date('2026-09-30T03:00:00.000Z'),
+    billId: 'bill-1',
+  })
+
+  it('pareia a pendente sem fatura com a lançada do mesmo tipo, valor e dia de Brasília', () => {
+    const pending = mapped({ externalId: 'pending' })
+    expect(findSettledPendingTwins([pending, posted])).toEqual([{ pendingId: 'pending', postedId: 'posted' }])
+  })
+
+  it('pendente de madrugada em UTC ainda é do dia anterior em Brasília', () => {
+    const pending = mapped({ externalId: 'pending', occurredAt: new Date('2026-10-01T01:30:00.000Z') })
+    expect(findSettledPendingTwins([pending, posted])).toEqual([{ pendingId: 'pending', postedId: 'posted' }])
+  })
+
+  it('valor, tipo ou dia diferentes não são a mesma compra', () => {
+    expect(findSettledPendingTwins([mapped({ externalId: 'p1', amountCents: 54647 }), posted])).toEqual([])
+    expect(findSettledPendingTwins([mapped({ externalId: 'p2', kind: 'EXPENSE' }), posted])).toEqual([])
+    expect(
+      findSettledPendingTwins([mapped({ externalId: 'p3', occurredAt: new Date('2026-09-29T15:00:00.000Z') }), posted]),
+    ).toEqual([])
+  })
+
+  it('uma lançada só pareia com uma pendente: duas compras iguais no dia continuam duas', () => {
+    const first = mapped({ externalId: 'p1' })
+    const second = mapped({ externalId: 'p2' })
+    expect(findSettledPendingTwins([first, second, posted])).toEqual([{ pendingId: 'p1', postedId: 'posted' }])
+  })
+
+  it('parcela nunca é par de outra: o Pluggy repete a data da compra em cada parcela', () => {
+    const parcel = mapped({ externalId: 'parcel', kind: 'EXPENSE', installmentNumber: 3 })
+    const parcelPosted = mapped({
+      externalId: 'parcel-posted',
+      kind: 'EXPENSE',
+      status: 'POSTED',
+      installmentNumber: 2,
+    })
+    expect(findSettledPendingTwins([parcel, parcelPosted])).toEqual([])
+  })
+
+  it('só pagamento de fatura é pareado: compra pendente igual a uma lançada continua sendo outra compra', () => {
+    const expense = mapped({ externalId: 'coffee-2', kind: 'EXPENSE' })
+    const expensePosted = mapped({
+      externalId: 'coffee-1',
+      kind: 'EXPENSE',
+      status: 'POSTED',
+      occurredAt: new Date('2026-09-30T03:00:00.000Z'),
+      billId: 'bill-1',
+    })
+    expect(findSettledPendingTwins([expense, expensePosted])).toEqual([])
+  })
+
+  it('lançada sem fatura ainda não é par da pendente', () => {
+    const pending = mapped({ externalId: 'pending' })
+    const unbilled = mapped({ ...posted, externalId: 'unbilled', billId: null })
+    expect(findSettledPendingTwins([pending, unbilled])).toEqual([])
+  })
+
+  it('pendente que já tem fatura não é descartada', () => {
+    expect(findSettledPendingTwins([mapped({ externalId: 'billed', billId: 'bill-9' }), posted])).toEqual([])
   })
 })

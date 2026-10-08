@@ -109,6 +109,8 @@ export function dayFromDateString(date: string): Date {
   return /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T12:00:00.000Z`) : new Date(date)
 }
 
+export const PENDING_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000
+
 // Início do dia do último fechamento (dia `closingDay`, já ocorrido hoje ou antes), à meia-noite de Brasília
 // (UTC-3, sem horário de verão): os bancos fecham a fatura pelo dia de Brasília, e a data que o banco manda
 // para uma compra costuma vir 00:00 de Brasília, que em Manaus seria 23:00 do dia anterior. Como
@@ -119,6 +121,27 @@ export function lastClosingCutoff(closingDay: number, now: Date = new Date()): D
   const closingIn = (y: number, m: number) => Math.min(closingDay, new Date(Date.UTC(y, m, 0)).getUTCDate())
   const [y, m] = closingIn(year, month) <= day ? [year, month] : month === 1 ? [year - 1, 12] : [year, month - 1]
   return new Date(Date.UTC(y, m - 1, closingIn(y, m), 3))
+}
+
+const CLOSING_SHIFT_MAX_MS = 3 * 86_400_000
+const BRASILIA_OFFSET_MS = 3 * 3_600_000
+const DAY_MS = 86_400_000
+
+export function brasiliaDayStart(date: Date): Date {
+  const brasilia = new Date(date.getTime() - BRASILIA_OFFSET_MS)
+  return new Date(Date.UTC(brasilia.getUTCFullYear(), brasilia.getUTCMonth(), brasilia.getUTCDate(), 3))
+}
+
+export function resolveLastClosingCutoff(
+  closingDay: number,
+  latestBilledPurchaseAt: Date | null,
+  now: Date = new Date(),
+): Date {
+  const nominal = lastClosingCutoff(closingDay, now)
+  if (!latestBilledPurchaseAt) return nominal
+  const observed = new Date(brasiliaDayStart(latestBilledPurchaseAt).getTime() + DAY_MS)
+  const shift = nominal.getTime() - observed.getTime()
+  return shift >= 0 && shift <= CLOSING_SHIFT_MAX_MS ? observed : nominal
 }
 
 export function nextClosingCutoff(closingDay: number, now: Date = new Date()): Date {

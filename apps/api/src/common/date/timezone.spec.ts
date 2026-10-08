@@ -1,4 +1,12 @@
-import { lastClosingCutoff, dateKey, dayFromDateString, monthKey, monthRange, shiftMonthKey } from './timezone'
+import {
+  lastClosingCutoff,
+  resolveLastClosingCutoff,
+  dateKey,
+  dayFromDateString,
+  monthKey,
+  monthRange,
+  shiftMonthKey,
+} from './timezone'
 
 describe('monthKey / dateKey', () => {
   it('compra às 23h30 do dia 31 (horário de Manaus) não cai no mês seguinte por fuso', () => {
@@ -101,5 +109,43 @@ describe('lastClosingCutoff', () => {
   it('em janeiro, volta pra dezembro; dia 31 em mês curto cai no último dia', () => {
     expect(lastClosingCutoff(20, new Date('2026-01-05T15:00:00.000Z')).toISOString()).toBe('2025-12-20T03:00:00.000Z')
     expect(lastClosingCutoff(31, new Date('2026-03-01T15:00:00.000Z')).toISOString()).toBe('2026-02-28T03:00:00.000Z')
+  })
+})
+
+describe('resolveLastClosingCutoff', () => {
+  const NOW = new Date('2026-10-08T14:00:00.000Z')
+
+  it('sem compra ligada a fatura, vale o dia nominal', () => {
+    expect(resolveLastClosingCutoff(27, null, NOW).toISOString()).toBe('2026-09-27T03:00:00.000Z')
+  })
+
+  it('banco que antecipou o fechamento: o corte é o dia seguinte à última compra da fatura fechada', () => {
+    const lastBilled = new Date('2026-09-25T15:00:00.000Z')
+    expect(resolveLastClosingCutoff(27, lastBilled, NOW).toISOString()).toBe('2026-09-26T03:00:00.000Z')
+  })
+
+  it('compra à 00h30 de Brasília ainda conta como o dia de Brasília, não o de Manaus', () => {
+    const lastBilled = new Date('2026-09-26T03:30:00.000Z')
+    expect(resolveLastClosingCutoff(27, lastBilled, NOW).toISOString()).toBe('2026-09-27T03:00:00.000Z')
+  })
+
+  it('compra à meia-noite de Brasília (data sem hora do banco) fecha no dia seguinte', () => {
+    const lastBilled = new Date('2026-09-25T03:00:00.000Z')
+    expect(resolveLastClosingCutoff(27, lastBilled, NOW).toISOString()).toBe('2026-09-26T03:00:00.000Z')
+  })
+
+  it('fatura fechada atrasada no Pluggy (última compra de um ciclo antes) não desloca o corte', () => {
+    const lastBilled = new Date('2026-08-28T15:00:00.000Z')
+    expect(resolveLastClosingCutoff(29, lastBilled, NOW).toISOString()).toBe('2026-09-29T03:00:00.000Z')
+  })
+
+  it('compra ligada a fatura depois do dia nominal não adianta nem atrasa o corte', () => {
+    const lastBilled = new Date('2026-09-29T15:00:00.000Z')
+    expect(resolveLastClosingCutoff(27, lastBilled, NOW).toISOString()).toBe('2026-09-27T03:00:00.000Z')
+  })
+
+  it('mais de 3 dias antes do dia nominal é atraso do Pluggy, não antecipação', () => {
+    const lastBilled = new Date('2026-09-22T15:00:00.000Z')
+    expect(resolveLastClosingCutoff(27, lastBilled, NOW).toISOString()).toBe('2026-09-27T03:00:00.000Z')
   })
 })

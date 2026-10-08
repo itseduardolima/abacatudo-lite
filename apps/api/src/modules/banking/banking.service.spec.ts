@@ -49,7 +49,11 @@ function accountsMock() {
 }
 
 function syncMock() {
-  return { upsertTransaction: jest.fn() } as unknown as jest.Mocked<BankingSyncRepository>
+  return {
+    upsertTransaction: jest.fn(),
+    mergeSettledPending: jest.fn(),
+    mergeOrphanPending: jest.fn(),
+  } as unknown as jest.Mocked<BankingSyncRepository>
 }
 
 // findSelf resolve pra "self-1" por padrão — a maioria dos testes não olha pra atribuição de pessoa.
@@ -542,6 +546,84 @@ describe('BankingService', () => {
     expect(updateData).not.toHaveProperty('closingDay')
     expect(updateData).not.toHaveProperty('dueDay')
     expect(updateData).not.toHaveProperty('creditLimitCents')
+  })
+
+  it('manualSync: não grava a pendente que o Pluggy repete junto da lançada e entrega o par pra mesclar', async () => {
+    const items = itemsMock()
+    items.findById.mockResolvedValue(itemRow())
+    const accounts = accountsMock()
+    accounts.upsertFromSync.mockResolvedValue(accountRow())
+    const pluggy = pluggyMock()
+    pluggy.listAccounts.mockResolvedValue([{ id: 'ext-acc-1', type: 'CREDIT', name: 'Nubank', creditData: null }])
+    const payment = (id: string, status: 'PENDING' | 'POSTED', date: string, billId: string | null) => ({
+      id,
+      amount: 546.46,
+      type: 'CREDIT' as const,
+      operationType: 'PAGAMENTO_FATURA',
+      category: null,
+      categoryId: null,
+      status,
+      date,
+      description: 'Pagamento recebido',
+      merchant: null,
+      creditCardMetadata: billId ? { billId } : null,
+    })
+    pluggy.listTransactions.mockResolvedValueOnce({
+      results: [
+        payment('pending-1', 'PENDING', '2026-09-30T18:33:06.490Z', null),
+        payment('posted-1', 'POSTED', '2026-09-30T03:00:00.000Z', 'bill-1'),
+      ],
+      next: null,
+    })
+    const sync = syncMock()
+
+    await newService({ pluggy, items, accounts, sync }).manualSync('user-1', 'item-1')
+
+    expect(sync.upsertTransaction).toHaveBeenCalledTimes(1)
+    expect(sync.upsertTransaction).toHaveBeenCalledWith(
+      'user-1',
+      'acc-1',
+      'self-1',
+      null,
+      expect.objectContaining({ externalId: 'posted-1' }),
+    )
+    expect(sync.mergeSettledPending).toHaveBeenCalledWith('user-1', 'acc-1', [
+      { pendingId: 'pending-1', postedId: 'posted-1' },
+    ])
+  })
+
+  it('manualSync: pede a limpeza das pendentes órfãs com tudo o que o Pluggy devolveu e não falha se a limpeza falhar', async () => {
+    const items = itemsMock()
+    items.findById.mockResolvedValue(itemRow())
+    const accounts = accountsMock()
+    accounts.upsertFromSync.mockResolvedValue(accountRow())
+    const pluggy = pluggyMock()
+    pluggy.listAccounts.mockResolvedValue([{ id: 'ext-acc-1', type: 'CREDIT', name: 'Nubank', creditData: null }])
+    pluggy.listTransactions.mockResolvedValueOnce({
+      results: [
+        {
+          id: 'tx-1',
+          amount: 50,
+          type: 'DEBIT',
+          operationType: null,
+          category: null,
+          categoryId: null,
+          status: 'POSTED',
+          date: '2026-09-21',
+          description: 'PAG*LOJA',
+          merchant: null,
+          creditCardMetadata: null,
+        },
+      ],
+      next: null,
+    })
+    const sync = syncMock()
+    sync.mergeOrphanPending.mockRejectedValue(new Error('boom'))
+
+    const result = await newService({ pluggy, items, accounts, sync }).manualSync('user-1', 'item-1')
+
+    expect(sync.mergeOrphanPending).toHaveBeenCalledWith('user-1', 'acc-1', ['tx-1'])
+    expect(result).toMatchObject({ accountsSynced: 1, transactionsSynced: 1 })
   })
 
   it('manualSync: sincroniza conta e transações por upsert atômico, sem duplicar', async () => {
