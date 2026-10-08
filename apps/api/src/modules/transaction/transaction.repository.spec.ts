@@ -36,6 +36,17 @@ describe('isInOpenCycle', () => {
     expect(isInOpenCycle(stale, OCTOBER, NOW)).toBe(false)
   })
 
+  it('fechamento antecipado: parcela de 26/09 já é da fatura aberta quando a última compra da fechada foi em 25/09', () => {
+    const installment = row({
+      status: 'PENDING',
+      installmentNumber: 4,
+      occurredAt: new Date('2026-06-25T15:00:00.000Z'),
+      installmentDueAt: new Date('2026-09-26T03:00:00.000Z'),
+    })
+    expect(isInOpenCycle(installment, OCTOBER, NOW)).toBe(false)
+    expect(isInOpenCycle(installment, OCTOBER, NOW, new Date('2026-09-25T15:00:00.000Z'))).toBe(true)
+  })
+
   it('parcela pendente antes do fechamento continua valendo pela data do vencimento', () => {
     const installment = row({
       status: 'PENDING',

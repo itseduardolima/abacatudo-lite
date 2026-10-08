@@ -62,6 +62,22 @@ export class InvoiceRepository {
     return rows.map((row, index) => toInvoiceRow(row, installments[index]!))
   }
 
+  async findLatestBilledPurchaseAt(userId: string, accountId: string): Promise<Date | null> {
+    const result = await this.prisma.transaction.aggregate({
+      where: {
+        userId,
+        accountId,
+        cancelledAt: null,
+        billId: { not: null },
+        kind: 'EXPENSE',
+        installmentNumber: null,
+        account: { type: 'CREDIT_CARD', source: 'PLUGGY' },
+      },
+      _max: { occurredAt: true },
+    })
+    return result._max.occurredAt
+  }
+
   // Só pagamento ainda sem fatura ou ligado à fatura fechada: o ligado a uma fatura anterior (pago no dia do
   // fechamento, por exemplo) já quitou aquela e não é antecipado.
   async sumPaymentsSince(userId: string, accountId: string, since: Date, closedBillId: string): Promise<number> {

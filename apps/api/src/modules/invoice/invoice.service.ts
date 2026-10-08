@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import type { AccountInvoice, EstimatedInstallmentsResponse, Invoice, StatementsResponse } from '@gastos/shared'
-import { lastClosingCutoff, monthKey, nextClosingCutoff, resolveMonthRange } from '../../common/date/timezone'
+import { monthKey, nextClosingCutoff, resolveLastClosingCutoff, resolveMonthRange } from '../../common/date/timezone'
 import { DomainError, NotFoundError } from '../../common/errors/domain.error'
 import { AccountRepository, type AccountWithPluggyItem } from '../account/account.repository'
 import { PluggyClient } from '../banking/pluggy/pluggy.client'
@@ -74,7 +74,7 @@ export class InvoiceService {
     const candidates = isForecast
       ? await this.estimatedInstallments(account, resolveMonthRange(targetMonth))
       : isCurrent
-        ? await this.openEstimatedInstallments(account)
+        ? await this.openEstimatedInstallments(account, await this.openAfter(account))
         : []
     const items = candidates.sort(
       (a, b) => a.dueAt.getTime() - b.dueAt.getTime() || a.label.localeCompare(b.label, 'pt-BR'),
@@ -138,7 +138,7 @@ export class InvoiceService {
       return [...real, ...estimated.map(toStatementRow)]
     }
     return keepNextDueInstallmentOnly(
-      await this.repo.findStatementOpenRows(account.userId, account.id, openAfter(account)),
+      await this.repo.findStatementOpenRows(account.userId, account.id, await this.openAfter(account)),
     )
   }
 
@@ -192,12 +192,13 @@ export class InvoiceService {
       }
     }
 
+    const closing = await this.openAfter(account)
     const [rows, estimated] = await Promise.all([
-      this.repo.findOpenRows(account.userId, account.id, openAfter(account)),
-      this.openEstimatedInstallments(account),
+      this.repo.findOpenRows(account.userId, account.id, closing),
+      this.openEstimatedInstallments(account, closing),
     ])
     const estimatedRows = estimated.map(toInvoiceRow)
-    const settlement = await this.closedBillSettlement(account)
+    const settlement = await this.closedBillSettlement(account, closing)
     const advancePaid = settlement.advancePaidCents
     return {
       ...applyAdvancePayment(
@@ -212,10 +213,10 @@ export class InvoiceService {
 
   private async closedBillSettlement(
     account: AccountWithPluggyItem,
+    since: Date | undefined,
   ): Promise<{ advancePaidCents: number; previousBillRemainingCents: number }> {
     const none = { advancePaidCents: 0, previousBillRemainingCents: 0 }
-    if (!account.closingDay) return none
-    const since = lastClosingCutoff(account.closingDay)
+    if (!since) return none
     const bill = await this.closedBill(account, since)
     if (!bill) return none
     const payments = await this.repo.sumPaymentsSince(account.userId, account.id, since, bill.id)
@@ -264,9 +265,11 @@ export class InvoiceService {
     )
   }
 
-  private async openEstimatedInstallments(account: AccountWithPluggyItem): Promise<InstallmentSource[]> {
-    if (account.source !== 'PLUGGY' || !account.closingDay) return []
-    const from = lastClosingCutoff(account.closingDay)
+  private async openEstimatedInstallments(
+    account: AccountWithPluggyItem,
+    from: Date | undefined,
+  ): Promise<InstallmentSource[]> {
+    if (account.source !== 'PLUGGY' || !account.closingDay || !from) return []
     const until = nextClosingCutoff(account.closingDay)
     const sources = await this.repo.findInstallmentSources(account.userId, account.id)
     const groupsInOpenCycle = new Set(sources.filter((source) => source.dueAt >= from).map((source) => source.groupKey))
@@ -285,15 +288,17 @@ export class InvoiceService {
     return months.sort().at(-1) ?? null
   }
 
+  private async openAfter(account: AccountWithPluggyItem): Promise<Date | undefined> {
+    if (!account.closingDay) return undefined
+    const latestBilled = await this.repo.findLatestBilledPurchaseAt(account.userId, account.id)
+    return resolveLastClosingCutoff(account.closingDay, latestBilled)
+  }
+
   private async selfPersonId(userId: string): Promise<string> {
     const self = await this.people.findSelf(userId)
     if (!self) throw new DomainError('SELF_PERSON_NOT_FOUND', 'Pessoa "Eu" não encontrada.', 500)
     return self.id
   }
-}
-
-function openAfter(account: AccountWithPluggyItem): Date | undefined {
-  return account.closingDay ? lastClosingCutoff(account.closingDay) : undefined
 }
 
 function resolveMonthKey(month: string): string {

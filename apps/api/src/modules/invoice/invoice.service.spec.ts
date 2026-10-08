@@ -20,6 +20,7 @@ function repoMock() {
     findRows: jest.fn(),
     findOpenRows: jest.fn(),
     sumPaymentsSince: jest.fn().mockResolvedValue(0),
+    findLatestBilledPurchaseAt: jest.fn().mockResolvedValue(null),
     findForecastRows: jest.fn(),
     findLastInstallmentDueAt: jest.fn(),
     findInstallmentSources: jest.fn().mockResolvedValue([]),
@@ -153,6 +154,22 @@ describe('InvoiceService', () => {
       await service.getForAccount('user-1', 'acc-1', monthKey(new Date()))
 
       expect(repo.findOpenRows).toHaveBeenCalledWith('user-1', 'acc-1', lastClosingCutoff(2))
+    })
+
+    it('banco que antecipou o fechamento: a última compra da fatura fechada puxa o corte pro dia seguinte a ela', async () => {
+      const nominal = lastClosingCutoff(2)
+      const accounts = accountsMock()
+      accounts.findById.mockResolvedValue(accountRow({ source: 'PLUGGY', closingDay: 2 }))
+      const people = peopleMock()
+      people.findSelf.mockResolvedValue(personRow())
+      const repo = repoMock()
+      repo.findOpenRows.mockResolvedValue([])
+      repo.findLatestBilledPurchaseAt.mockResolvedValue(new Date(nominal.getTime() - 2 * 86_400_000 + 12 * 3_600_000))
+      const service = new InvoiceService(repo, accounts, people, pluggyMock())
+
+      await service.getForAccount('user-1', 'acc-1', monthKey(new Date()))
+
+      expect(repo.findOpenRows).toHaveBeenCalledWith('user-1', 'acc-1', new Date(nominal.getTime() - 86_400_000))
     })
 
     it('conta PLUGGY sem fatura fechada ainda (cartão novo): sem saldo anterior', async () => {

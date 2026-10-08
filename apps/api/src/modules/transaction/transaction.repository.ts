@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import type { Prisma, Transaction } from '@prisma/client'
-import { lastClosingCutoff, monthKey, monthRange, PENDING_LOOKBACK_MS } from '../../common/date/timezone'
+import { monthKey, monthRange, PENDING_LOOKBACK_MS, resolveLastClosingCutoff } from '../../common/date/timezone'
 import { keepCurrentInstallmentsOnly } from '../../common/installment-group'
 import { PRISMA, type PrismaService } from '../../prisma/prisma.client'
 
@@ -17,6 +17,7 @@ export function isInOpenCycle(
   },
   range: { start: Date; end: Date },
   now: Date = new Date(),
+  latestBilledPurchaseAt: Date | null = null,
 ): boolean {
   if (row.billId !== null || !row.account.closingDay) return true
   if (
@@ -26,7 +27,10 @@ export function isInOpenCycle(
   )
     return true
   if (row.occurredAt >= range.start && row.occurredAt < range.end) return true
-  return (row.installmentDueAt ?? row.occurredAt) >= lastClosingCutoff(row.account.closingDay, now)
+  return (
+    (row.installmentDueAt ?? row.occurredAt) >=
+    resolveLastClosingCutoff(row.account.closingDay, latestBilledPurchaseAt, now)
+  )
 }
 
 export type TransactionWithSplits = Transaction & { splits: { personId: string; amountCents: number }[] }
@@ -59,8 +63,25 @@ export class TransactionRepository {
       orderBy: { occurredAt: 'desc' },
       include: { ...SPLITS_SELECT, account: { select: { closingDay: true } } },
     })
-    const open = rows.filter((row) => isInOpenCycle(row, range))
+    const latestBilled = await this.latestBilledPurchaseByAccount(userId)
+    const open = rows.filter((row) => isInOpenCycle(row, range, new Date(), latestBilled.get(row.accountId) ?? null))
     return keepCurrentInstallmentsOnly(open.map(({ account: _account, ...row }) => row))
+  }
+
+  private async latestBilledPurchaseByAccount(userId: string): Promise<Map<string, Date>> {
+    const groups = await this.prisma.transaction.groupBy({
+      by: ['accountId'],
+      where: {
+        userId,
+        cancelledAt: null,
+        billId: { not: null },
+        kind: 'EXPENSE',
+        installmentNumber: null,
+        account: { type: 'CREDIT_CARD', source: 'PLUGGY' },
+      },
+      _max: { occurredAt: true },
+    })
+    return new Map(groups.flatMap((group) => (group._max.occurredAt ? [[group.accountId, group._max.occurredAt]] : [])))
   }
 
   // Fatura prevista (03-regras-negocio § Fatura prevista): só as parcelas ainda sem billId cuja data de
