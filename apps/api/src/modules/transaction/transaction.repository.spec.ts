@@ -73,6 +73,39 @@ describe('isInOpenCycle', () => {
     expect(isInOpenCycle(installment, OCTOBER, NOW)).toBe(false)
   })
 
+  it('parcela sem fatura que vence a partir do próximo fechamento fica de fora, cada uma aparece no seu mês', () => {
+    const next = row({
+      installmentNumber: 2,
+      occurredAt: new Date('2026-11-02T15:00:00.000Z'),
+      installmentDueAt: new Date('2026-11-02T15:00:00.000Z'),
+    })
+    expect(isInOpenCycle(next, OCTOBER, NOW)).toBe(false)
+  })
+
+  it('o corte é o fechamento do cartão, não o fim do mês: fechamento dia 5 mantém parcela de 3/11 na fatura aberta', () => {
+    const installment = row({
+      account: { closingDay: 5 },
+      installmentNumber: 2,
+      occurredAt: new Date('2026-08-03T15:00:00.000Z'),
+      installmentDueAt: new Date('2026-11-03T15:00:00.000Z'),
+    })
+    expect(isInOpenCycle(installment, OCTOBER, new Date('2026-10-12T15:00:00.000Z'))).toBe(true)
+  })
+
+  it('fechamento dia 21: parcela de 25/10 já é da fatura seguinte', () => {
+    const installment = row({
+      account: { closingDay: 21 },
+      installmentNumber: 2,
+      occurredAt: new Date('2026-08-25T15:00:00.000Z'),
+      installmentDueAt: new Date('2026-10-25T15:00:00.000Z'),
+    })
+    expect(isInOpenCycle(installment, OCTOBER, NOW)).toBe(false)
+  })
+
+  it('parcela sem data de vencimento não é cortada', () => {
+    expect(isInOpenCycle(row({ installmentNumber: 2, occurredAt: NOW }), OCTOBER, NOW)).toBe(true)
+  })
+
   it('cartão sem closingDay ou com billId segue a regra de sempre', () => {
     expect(
       isInOpenCycle(
@@ -110,5 +143,35 @@ describe('parcelas de compra cancelada fora dos meses futuros', () => {
     expect(findMany).toHaveBeenCalledTimes(9)
     for (const call of findMany.mock.calls) expect(call[0].where).toMatchObject({ cancelledAt: null })
     expect(aggregate.mock.calls[0][0].where).toMatchObject({ cancelledAt: null })
+  })
+})
+
+describe('fatura aberta: limite superior das parcelas', () => {
+  const before = new Date('2026-10-27T03:00:00.000Z')
+  const after = new Date('2026-09-27T03:00:00.000Z')
+
+  it('exclui só parcela com vencimento preenchido a partir do corte; vencimento nulo continua entrando', async () => {
+    const findMany = jest.fn().mockResolvedValue([])
+    const prisma = { transaction: { findMany } } as unknown as PrismaService
+    const invoices = new InvoiceRepository(prisma)
+
+    await invoices.findOpenRows('user-1', 'acc-1', { after, before })
+    await invoices.findStatementOpenRows('user-1', 'acc-1', { after, before })
+
+    expect(findMany).toHaveBeenCalledTimes(2)
+    for (const call of findMany.mock.calls) {
+      expect(call[0].where.NOT).toEqual({
+        installmentNumber: { not: null },
+        installmentDueAt: { not: null, gte: before },
+      })
+    }
+  })
+
+  it('sem corte superior não filtra nada', async () => {
+    const findMany = jest.fn().mockResolvedValue([])
+    const prisma = { transaction: { findMany } } as unknown as PrismaService
+    await new InvoiceRepository(prisma).findOpenRows('user-1', 'acc-1', { after })
+
+    expect(findMany.mock.calls[0][0].where.NOT).toBeUndefined()
   })
 })

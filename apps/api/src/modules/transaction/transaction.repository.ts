@@ -1,6 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common'
 import type { Prisma, Transaction } from '@prisma/client'
-import { monthKey, monthRange, PENDING_LOOKBACK_MS, resolveLastClosingCutoff } from '../../common/date/timezone'
+import {
+  monthKey,
+  monthRange,
+  nextClosingCutoff,
+  PENDING_LOOKBACK_MS,
+  resolveLastClosingCutoff,
+} from '../../common/date/timezone'
 import { keepCurrentInstallmentsOnly } from '../../common/installment-group'
 import { PRISMA, type PrismaService } from '../../prisma/prisma.client'
 
@@ -19,6 +25,14 @@ export function isInOpenCycle(
   now: Date = new Date(),
   latestBilledPurchaseAt: Date | null = null,
 ): boolean {
+  if (
+    row.billId === null &&
+    row.installmentNumber !== null &&
+    row.installmentDueAt &&
+    row.account.closingDay &&
+    row.installmentDueAt >= nextClosingCutoff(row.account.closingDay, now)
+  )
+    return false
   if (row.billId !== null || !row.account.closingDay) return true
   if (
     row.installmentNumber === null &&
