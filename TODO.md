@@ -1320,3 +1320,8 @@ typecheck/lint/build limpos).
 - [x] Fechamento antecipado pelo banco: o início do ciclo aberto sai do dia seguinte à última compra à vista ligada
       à fatura fechada (até 3 dias antes do corte nominal), sem o usuário trocar o dia de fechamento todo mês
       (Nubank, fechou 26/09 em vez de 27) (2026-10-08).
+
+- [x] Fatura aberta e lista: parcela sem fatura que vence a partir do próximo fechamento do cartão fica fora (total,
+      extrato e lista de lançamentos, no mesmo corte). Sintoma: lançamento com 6 parcelas, cada uma com data de
+      compra em um mês diferente, aparecia inteiro e somava R$ 390,60 a mais na fatura do Nubank. A janela do ciclo
+      (`after`/`before`) passa junto como `OpenWindow`; parcela sem vencimento não é cortada (2026-10-12).

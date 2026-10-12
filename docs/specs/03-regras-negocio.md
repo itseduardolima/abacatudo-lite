@@ -133,6 +133,13 @@ Detalhe e números em [07-integracao-bancaria](./07-integracao-bancaria.md) § F
   semana e feriado (Nubank, 27/09/2026, domingo, fechou no sábado 26). O início do ciclo é corrigido pelos dados: vale o dia
   seguinte (Brasília) à última compra à vista ligada a uma fatura fechada, se cair até 3 dias antes do corte nominal. Mais
   longe disso é fatura que o Pluggy ainda não ligou (BB), e o corte fica no dia nominal. Nada é gravado: recalcula a cada leitura.
+  O ciclo aberto tem também um **limite superior**: parcela sem fatura cujo vencimento cai a partir do próximo
+  fechamento nominal não é da fatura aberta (nem do total, nem do extrato, nem da lista de lançamentos); ela só
+  aparece no mês dela, na fatura prevista. Vale para a conta com `closingDay`, e a lista e a fatura usam o mesmo
+  corte, senão a invariante `Fatura = Meu + Não é meu + A classificar` deixa de bater com as linhas mostradas.
+  Parcela sem data de vencimento não é cortada. Esse limite é o fechamento nominal: diferente do início do ciclo,
+  não há dado para saber de antemão que o banco vai antecipar o próximo fechamento (aproximação conhecida, de um
+  ou dois dias, só aparece se uma parcela vencer exatamente nessa janela).
 - **Cartão adicional**: o final do cartão de cada transação (`cardNumber`) já resolve a pessoa via
   `CardHolderHint`, antes de qualquer classificação manual.
 
