@@ -7,7 +7,7 @@ import {
   PENDING_LOOKBACK_MS,
   resolveLastClosingCutoff,
 } from '../../common/date/timezone'
-import { keepCurrentInstallmentsOnly } from '../../common/installment-group'
+import { clusterInstallmentKeys, keepCurrentInstallmentsOnly } from '../../common/installment-group'
 import { PRISMA, type PrismaService } from '../../prisma/prisma.client'
 
 const SPLITS_SELECT = { splits: { select: { personId: true, amountCents: true } } } as const
@@ -159,6 +159,25 @@ export class TransactionRepository {
         installmentTotal: true,
       },
     })
+  }
+
+  async findPurchaseGroup(
+    userId: string,
+    existing: TransactionWithSplits,
+  ): Promise<{ id: string; amountCents: number }[]> {
+    const self = { id: existing.id, amountCents: existing.amountCents }
+    if (existing.installmentNumber == null || existing.installmentTotal == null) return [self]
+    const candidates = await this.findPurchaseCandidates(
+      userId,
+      existing.accountId,
+      existing.occurredAt,
+      existing.installmentTotal,
+    )
+    const batch = [existing, ...candidates.filter((candidate) => candidate.id !== existing.id)]
+    const keys = clusterInstallmentKeys(batch)
+    return batch.flatMap((row, index) =>
+      index === 0 || keys[index] === keys[0] ? [{ id: row.id, amountCents: row.amountCents }] : [],
+    )
   }
 
   findUnbilledPurchaseCandidates(

@@ -20,6 +20,7 @@ function repoMock() {
     findMany: jest.fn(),
     findForecast: jest.fn(),
     findPurchaseCandidates: jest.fn(),
+    findPurchaseGroup: jest.fn(),
     findUnbilledPurchaseCandidates: jest.fn(),
     setCancelledAt: jest.fn(),
     updateDisplayName: jest.fn(),
@@ -49,7 +50,7 @@ function cardHolderHintsMock() {
 }
 
 function splitsMock() {
-  return { setSinglePerson: jest.fn() } as unknown as jest.Mocked<SplitRepository>
+  return { setSinglePerson: jest.fn(), setSinglePersonForMany: jest.fn() } as unknown as jest.Mocked<SplitRepository>
 }
 
 function row(
@@ -580,6 +581,7 @@ describe('TransactionService', () => {
           personId: 'person-2',
           alwaysForMerchant: false,
           alwaysForCard: false,
+          wholePurchase: false,
         }),
       ).rejects.toBeInstanceOf(NotFoundError)
     })
@@ -596,9 +598,53 @@ describe('TransactionService', () => {
           personId: 'person-de-outro',
           alwaysForMerchant: false,
           alwaysForCard: false,
+          wholePurchase: false,
         }),
       ).rejects.toBeInstanceOf(NotFoundError)
       expect(repo.findById).toHaveBeenCalledTimes(1)
+    })
+
+    it('compra inteira: aplica a pessoa em todas as parcelas do grupo, sempre com o userId de quem pediu', async () => {
+      const repo = repoMock()
+      repo.findById.mockResolvedValue(row({ installmentNumber: 2, installmentTotal: 10 }))
+      repo.findPurchaseGroup.mockResolvedValue([
+        { id: 'tx-1', amountCents: 1500 },
+        { id: 'tx-2', amountCents: 1500 },
+        { id: 'tx-3', amountCents: 1501 },
+      ])
+      const people = peopleMock()
+      people.findActiveById.mockResolvedValue(personRow())
+      const splits = splitsMock()
+      const service = newService({ repo, people, splits })
+
+      await service.updatePerson('user-1', 'tx-1', {
+        personId: 'person-2',
+        alwaysForMerchant: false,
+        alwaysForCard: false,
+        wholePurchase: true,
+      })
+
+      expect(repo.findPurchaseGroup).toHaveBeenCalledWith('user-1', expect.objectContaining({ id: 'tx-1' }))
+      expect(splits.setSinglePersonForMany).toHaveBeenCalledWith('user-1', ['tx-1', 'tx-2', 'tx-3'], 'person-2')
+      expect(splits.setSinglePerson).not.toHaveBeenCalled()
+    })
+
+    it('compra inteira de outro usuário: 404 e nada é gravado', async () => {
+      const repo = repoMock()
+      repo.findById.mockResolvedValue(null)
+      const splits = splitsMock()
+      const service = newService({ repo, splits })
+
+      await expect(
+        service.updatePerson('user-2', 'tx-1', {
+          personId: 'person-2',
+          alwaysForMerchant: false,
+          alwaysForCard: false,
+          wholePurchase: true,
+        }),
+      ).rejects.toBeInstanceOf(NotFoundError)
+      expect(repo.findPurchaseGroup).not.toHaveBeenCalled()
+      expect(splits.setSinglePersonForMany).not.toHaveBeenCalled()
     })
 
     it('troca a pessoa e desfaz split se tiver, atomicamente, devolve a transação atualizada', async () => {
@@ -613,6 +659,7 @@ describe('TransactionService', () => {
         personId: 'person-2',
         alwaysForMerchant: false,
         alwaysForCard: false,
+        wholePurchase: false,
       })
 
       expect(splits.setSinglePerson).toHaveBeenCalledWith('user-1', 'tx-1', 'person-2')
@@ -629,7 +676,12 @@ describe('TransactionService', () => {
       const service = newService({ repo, people, rules, splits })
 
       await expect(
-        service.updatePerson('user-1', 'tx-1', { personId: 'person-2', alwaysForMerchant: true, alwaysForCard: false }),
+        service.updatePerson('user-1', 'tx-1', {
+          personId: 'person-2',
+          alwaysForMerchant: true,
+          alwaysForCard: false,
+          wholePurchase: false,
+        }),
       ).rejects.toBeInstanceOf(DomainError)
       expect(rules.upsertPerson).not.toHaveBeenCalled()
       expect(splits.setSinglePerson).not.toHaveBeenCalled()
@@ -649,6 +701,7 @@ describe('TransactionService', () => {
         personId: 'person-2',
         alwaysForMerchant: true,
         alwaysForCard: false,
+        wholePurchase: false,
       })
 
       expect(rules.upsertPerson).toHaveBeenCalledWith('user-1', 'loja da família', 'person-2')
@@ -664,7 +717,12 @@ describe('TransactionService', () => {
       const service = newService({ repo, people, cardHolderHints, splits })
 
       await expect(
-        service.updatePerson('user-1', 'tx-1', { personId: 'person-2', alwaysForMerchant: false, alwaysForCard: true }),
+        service.updatePerson('user-1', 'tx-1', {
+          personId: 'person-2',
+          alwaysForMerchant: false,
+          alwaysForCard: true,
+          wholePurchase: false,
+        }),
       ).rejects.toBeInstanceOf(DomainError)
       expect(cardHolderHints.upsertPerson).not.toHaveBeenCalled()
       expect(splits.setSinglePerson).not.toHaveBeenCalled()
@@ -684,6 +742,7 @@ describe('TransactionService', () => {
         personId: 'person-2',
         alwaysForMerchant: false,
         alwaysForCard: true,
+        wholePurchase: false,
       })
 
       expect(cardHolderHints.upsertPerson).toHaveBeenCalledWith('user-1', 'acc-1', '1234', 'person-2')
@@ -704,6 +763,7 @@ describe('TransactionService', () => {
         personId: 'person-2',
         alwaysForMerchant: true,
         alwaysForCard: true,
+        wholePurchase: false,
       })
 
       expect(rules.upsertPerson).toHaveBeenCalledWith('user-1', 'loja x', 'person-2')

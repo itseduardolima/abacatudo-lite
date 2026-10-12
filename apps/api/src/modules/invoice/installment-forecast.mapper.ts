@@ -1,4 +1,5 @@
 export interface InstallmentSource {
+  transactionId: string
   groupKey: string
   number: number
   total: number

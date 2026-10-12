@@ -3,6 +3,7 @@ import type { Transaction, SplitPreview, UpdateTransactionSplitInput } from '@ga
 import { DomainError, NotFoundError } from '../../common/errors/domain.error'
 import { PersonRepository } from '../person/person.repository'
 import { splitEqually } from '../split/split-equally'
+import { splitProportionally } from '../split/split-proportionally'
 import { SplitRepository } from '../split/split.repository'
 import { toTransactionDto } from './transaction.mapper'
 import { TransactionRepository } from './transaction.repository'
@@ -44,7 +45,18 @@ export class SplitService {
       )
     }
 
-    await this.splits.replaceAll(userId, transactionId, input.splits)
+    if (input.wholePurchase) {
+      const group = await this.transactions.findPurchaseGroup(userId, transaction)
+      await this.splits.replaceForMany(
+        userId,
+        group.map((row) => ({
+          transactionId: row.id,
+          splits: row.id === transactionId ? input.splits : splitProportionally(row.amountCents, input.splits),
+        })),
+      )
+    } else {
+      await this.splits.replaceAll(userId, transactionId, input.splits)
+    }
     const updated = await this.transactions.findById(userId, transactionId)
     if (!updated) throw NOT_FOUND()
     return toTransactionDto(updated, updated.splits)

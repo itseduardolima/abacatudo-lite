@@ -6,7 +6,9 @@ export type SplitItem = z.infer<typeof splitItemSchema>
 
 // Dividir entre menos de 2 pessoas não é divisão — pra 1 pessoa só, use corrigir a pessoa
 // (03-regras-negocio § Atribuição de pessoa).
-export const updateTransactionSplitInputSchema = z.object({ splits: z.array(splitItemSchema).min(2) }).strict()
+export const updateTransactionSplitInputSchema = z
+  .object({ splits: z.array(splitItemSchema).min(2), wholePurchase: z.boolean().default(false) })
+  .strict()
 export type UpdateTransactionSplitInput = z.infer<typeof updateTransactionSplitInputSchema>
 
 export const previewSplitInputSchema = z.object({ personIds: z.array(idSchema).min(2) }).strict()

@@ -38,4 +38,29 @@ export class SplitRepository {
       await tx.transaction.updateMany({ where: { userId, id: transactionId }, data: { personId } })
     })
   }
+
+  async replaceForMany(
+    userId: string,
+    entries: { transactionId: string; splits: { personId: string; amountCents: number }[] }[],
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await setUserInTransaction(tx, userId)
+      const ids = entries.map((entry) => entry.transactionId)
+      await tx.transaction.updateMany({ where: { userId, id: { in: ids } }, data: { personId: null } })
+      await tx.split.deleteMany({ where: { userId, transactionId: { in: ids } } })
+      await tx.split.createMany({
+        data: entries.flatMap((entry) =>
+          entry.splits.map((split) => ({ userId, transactionId: entry.transactionId, ...split })),
+        ),
+      })
+    })
+  }
+
+  async setSinglePersonForMany(userId: string, transactionIds: string[], personId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await setUserInTransaction(tx, userId)
+      await tx.split.deleteMany({ where: { userId, transactionId: { in: transactionIds } } })
+      await tx.transaction.updateMany({ where: { userId, id: { in: transactionIds } }, data: { personId } })
+    })
+  }
 }

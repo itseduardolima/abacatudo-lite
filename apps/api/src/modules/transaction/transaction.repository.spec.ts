@@ -175,3 +175,48 @@ describe('fatura aberta: limite superior das parcelas', () => {
     expect(findMany.mock.calls[0][0].where.NOT).toBeUndefined()
   })
 })
+
+describe('findPurchaseGroup', () => {
+  const candidate = (id: string, description: string, amountCents: number, installmentNumber: number) => ({
+    id,
+    accountId: 'acc-1',
+    description,
+    occurredAt: new Date('2026-08-13T15:00:00.000Z'),
+    amountCents,
+    installmentNumber,
+    installmentTotal: 10,
+  })
+  const existing = {
+    ...candidate('tx-2', 'MANAUS ADRI M PARC 02/10 MANAUS      BR', 10744, 2),
+    splits: [],
+  } as unknown as Parameters<TransactionRepository['findPurchaseGroup']>[1]
+
+  it('junta só as parcelas da mesma compra, da conta e do usuário pedidos', async () => {
+    const findMany = jest
+      .fn()
+      .mockResolvedValue([
+        candidate('tx-1', 'MANAUS ADRI M PARC 01/10 MANAUS      BR', 10745, 1),
+        candidate('tx-3', 'MANAUS ADRI M PARC 03/10 MANAUS      BR', 10744, 3),
+        candidate('tx-9', 'RAMSONS STUDI PARC 01/10 MANAUS      BR', 22991, 1),
+      ])
+    const repository = new TransactionRepository({ transaction: { findMany } } as unknown as PrismaService)
+
+    const group = await repository.findPurchaseGroup('user-1', existing)
+
+    expect(group.map((row) => row.id)).toEqual(['tx-2', 'tx-1', 'tx-3'])
+    expect(findMany.mock.calls[0][0].where).toMatchObject({
+      userId: 'user-1',
+      accountId: 'acc-1',
+      installmentTotal: 10,
+    })
+  })
+
+  it('transação sem parcela é um grupo de um só, sem consultar o banco', async () => {
+    const findMany = jest.fn()
+    const repository = new TransactionRepository({ transaction: { findMany } } as unknown as PrismaService)
+    const single = { ...existing, installmentNumber: null, installmentTotal: null }
+
+    expect(await repository.findPurchaseGroup('user-1', single)).toEqual([{ id: 'tx-2', amountCents: 10744 }])
+    expect(findMany).not.toHaveBeenCalled()
+  })
+})

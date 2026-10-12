@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { centsSchema, idSchema } from './common'
+import { splitItemSchema } from './split'
 
 // Fatura = Meu + Não é meu, sempre (03-regras-negocio § Só a minha parte).
 export const invoiceSchema = z
@@ -55,6 +56,9 @@ export const estimatedInstallmentSchema = z
     installmentNumber: z.number().int().positive(),
     installmentTotal: z.number().int().positive(),
     dueAt: z.string().datetime(),
+    sourceTransactionId: idSchema,
+    personId: idSchema.nullable(),
+    splits: z.array(splitItemSchema),
   })
   .strict()
 export type EstimatedInstallment = z.infer<typeof estimatedInstallmentSchema>

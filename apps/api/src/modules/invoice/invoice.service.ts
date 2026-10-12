@@ -90,6 +90,9 @@ export class InvoiceService {
         installmentNumber: item.number,
         installmentTotal: item.total,
         dueAt: item.dueAt.toISOString(),
+        sourceTransactionId: item.transactionId,
+        personId: item.personId,
+        splits: item.splits,
       })),
     }
   }

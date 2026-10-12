@@ -129,7 +129,16 @@ export class TransactionService {
 
     // Atômico: corrigir a pessoa direto também desfaz uma divisão, se tiver — nunca deixa split antigo
     // sobrar "escondido" depois que a pessoa foi trocada.
-    await this.splits.setSinglePerson(userId, id, input.personId)
+    if (input.wholePurchase) {
+      const group = await this.repo.findPurchaseGroup(userId, existing)
+      await this.splits.setSinglePersonForMany(
+        userId,
+        group.map((row) => row.id),
+        input.personId,
+      )
+    } else {
+      await this.splits.setSinglePerson(userId, id, input.personId)
+    }
 
     const updated = await this.repo.findById(userId, id)
     if (!updated) throw NOT_FOUND()

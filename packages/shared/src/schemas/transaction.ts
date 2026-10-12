@@ -50,6 +50,7 @@ export const updateTransactionPersonInputSchema = z
     personId: idSchema,
     alwaysForMerchant: z.boolean().default(false),
     alwaysForCard: z.boolean().default(false),
+    wholePurchase: z.boolean().default(false),
   })
   .strict()
 export type UpdateTransactionPersonInput = z.infer<typeof updateTransactionPersonInputSchema>

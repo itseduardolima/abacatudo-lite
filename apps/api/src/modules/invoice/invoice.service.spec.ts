@@ -448,6 +448,7 @@ describe('InvoiceService', () => {
     const currentMonth = monthKey(new Date())
     const nextMonth = shiftMonthKey(currentMonth, 1)
     const source = (overrides: Record<string, unknown> = {}) => ({
+      transactionId: 'tx-1',
       groupKey: 'compra-a',
       number: 2,
       total: 4,
@@ -485,6 +486,7 @@ describe('InvoiceService', () => {
       const next = lastClosingCutoff(2)
       repo.findInstallmentSources.mockResolvedValue([
         {
+          transactionId: 'tx-jim',
           groupKey: 'jim',
           number: 1,
           total: 12,

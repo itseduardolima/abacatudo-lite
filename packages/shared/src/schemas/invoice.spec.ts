@@ -71,6 +71,9 @@ describe('estimatedInstallmentsResponseSchema', () => {
     installmentNumber: 3,
     installmentTotal: 12,
     dueAt: '2026-10-17T12:00:00.000Z',
+    sourceTransactionId: '3f9c6f2e-0a53-4f7a-9a52-6d3f6f0d4a11',
+    personId: null,
+    splits: [],
   }
 
   it('aceita a lista de parcelas estimadas', () => {

@@ -9,6 +9,7 @@ import {
 
 function source(overrides: Partial<InstallmentSource> = {}): InstallmentSource {
   return {
+    transactionId: 'tx-1',
     groupKey: 'compra-a',
     number: 2,
     total: 5,

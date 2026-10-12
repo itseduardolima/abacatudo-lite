@@ -6,7 +6,7 @@ import { SplitService } from './split.service'
 import type { TransactionRepository, TransactionWithSplits } from './transaction.repository'
 
 function transactionsMock() {
-  return { findById: jest.fn() } as unknown as jest.Mocked<TransactionRepository>
+  return { findById: jest.fn(), findPurchaseGroup: jest.fn() } as unknown as jest.Mocked<TransactionRepository>
 }
 
 function peopleMock() {
@@ -14,7 +14,11 @@ function peopleMock() {
 }
 
 function splitsMock() {
-  return { replaceAll: jest.fn(), setSinglePerson: jest.fn() } as unknown as jest.Mocked<SplitRepository>
+  return {
+    replaceAll: jest.fn(),
+    replaceForMany: jest.fn(),
+    setSinglePerson: jest.fn(),
+  } as unknown as jest.Mocked<SplitRepository>
 }
 
 function row(
@@ -121,6 +125,7 @@ describe('SplitService', () => {
             { personId: 'p1', amountCents: 500 },
             { personId: 'p1', amountCents: 500 },
           ],
+          wholePurchase: false,
         }),
       ).rejects.toBeInstanceOf(DomainError)
       expect(splits.replaceAll).not.toHaveBeenCalled()
@@ -140,6 +145,7 @@ describe('SplitService', () => {
             { personId: 'p1', amountCents: 400 },
             { personId: 'p2', amountCents: 500 },
           ],
+          wholePurchase: false,
         }),
       ).rejects.toBeInstanceOf(DomainError)
       expect(splits.replaceAll).not.toHaveBeenCalled()
@@ -160,6 +166,7 @@ describe('SplitService', () => {
           { personId: 'self-1', amountCents: 500 },
           { personId: 'person-2', amountCents: 500 },
         ],
+        wholePurchase: false,
       }
       const result = await service.replace('user-1', 'tx-1', input)
 
@@ -184,5 +191,63 @@ describe('SplitService', () => {
       expect(splits.setSinglePerson).toHaveBeenCalledWith('user-1', 'tx-1', 'self-1')
       expect(result.personId).toBe('self-1')
     })
+  })
+
+  it('compra inteira: divide cada parcela na mesma proporção, com a soma fechando no valor de cada uma', async () => {
+    const transactions = transactionsMock()
+    transactions.findById.mockResolvedValue(row({ id: 'tx-1', amountCents: 10744 }))
+    transactions.findPurchaseGroup.mockResolvedValue([
+      { id: 'tx-1', amountCents: 10744 },
+      { id: 'tx-2', amountCents: 10745 },
+    ])
+    const people = peopleMock()
+    people.findActiveById.mockResolvedValue(personRow())
+    const splits = splitsMock()
+    const service = new SplitService(transactions, people, splits)
+
+    await service.replace('user-1', 'tx-1', {
+      splits: [
+        { personId: 'self-1', amountCents: 5372 },
+        { personId: 'person-2', amountCents: 5372 },
+      ],
+      wholePurchase: true,
+    })
+
+    expect(transactions.findPurchaseGroup).toHaveBeenCalledWith('user-1', expect.objectContaining({ id: 'tx-1' }))
+    expect(splits.replaceForMany).toHaveBeenCalledWith('user-1', [
+      {
+        transactionId: 'tx-1',
+        splits: [
+          { personId: 'self-1', amountCents: 5372 },
+          { personId: 'person-2', amountCents: 5372 },
+        ],
+      },
+      {
+        transactionId: 'tx-2',
+        splits: [
+          { personId: 'self-1', amountCents: 5373 },
+          { personId: 'person-2', amountCents: 5372 },
+        ],
+      },
+    ])
+    expect(splits.replaceAll).not.toHaveBeenCalled()
+  })
+
+  it('compra inteira de outro usuário: 404 e nada é gravado', async () => {
+    const transactions = transactionsMock()
+    transactions.findById.mockResolvedValue(null)
+    const splits = splitsMock()
+    const service = new SplitService(transactions, peopleMock(), splits)
+
+    await expect(
+      service.replace('user-2', 'tx-1', {
+        splits: [
+          { personId: 'a', amountCents: 500 },
+          { personId: 'b', amountCents: 500 },
+        ],
+        wholePurchase: true,
+      }),
+    ).rejects.toBeInstanceOf(NotFoundError)
+    expect(splits.replaceForMany).not.toHaveBeenCalled()
   })
 })

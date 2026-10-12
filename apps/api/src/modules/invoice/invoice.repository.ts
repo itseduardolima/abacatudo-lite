@@ -199,6 +199,7 @@ export class InvoiceRepository {
       }
       return [
         {
+          transactionId: row.id,
           groupKey,
           number: row.installmentNumber,
           total: row.installmentTotal,
