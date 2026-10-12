@@ -58,6 +58,8 @@ benefício (VR/VA): nada disso é sincronizado, guardado ou exibido.
   removível.
 - O User cadastra familiares como Person (`name`, cor opcional). Person não
   faz login e não é User.
+- O nome de uma Person pode ser editado (`PATCH /people/:id`), inclusive o da `isSelf`: é só um rótulo, o
+  histórico e as atribuições seguem a mesma Person. Pessoa arquivada não é editada.
 - Person com transações não pode ser apagada; pode ser **arquivada** (some
   das listas de escolha, o histórico fica).
 - Nome de Person é dado pessoal de terceiro: guardado só como rótulo, sem

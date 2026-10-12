@@ -1328,5 +1328,8 @@ typecheck/lint/build limpos).
 
 - [x] Atribuir parcela estimada: tocar numa estimada abre a folha da compra (sem nome, categoria nem cancelar) e a
       pessoa ou divisão vale pra compra inteira (`wholePurchase` em `PATCH /transactions/:id/person` e `PUT
-  /transactions/:id/split`, divisão proporcional por parcela). A estimada herda da última parcela real, então já
+/transactions/:id/split`, divisão proporcional por parcela). A estimada herda da última parcela real, então já
       sai atribuída; a parcela nova do banco herda a atribuição da anterior no sync (2026-10-12).
+
+- [x] Pessoas: editar o nome (`PATCH /people/:id`, edição inline na tela) e o campo "Nova pessoa" no topo da lista
+      (2026-10-12).

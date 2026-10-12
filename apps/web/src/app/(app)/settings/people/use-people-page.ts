@@ -6,6 +6,7 @@ import type { CreatePersonInput } from '@gastos/shared'
 import { useArchivePerson } from '@/hooks/queries/use-archive-person'
 import { useCreatePerson } from '@/hooks/queries/use-create-person'
 import { usePeople } from '@/hooks/queries/use-people'
+import { useUpdatePerson } from '@/hooks/queries/use-update-person'
 import { ApiClientError } from '@/lib/api-client'
 
 // Hook de página: só orquestração (04-padroes-codigo). Linha de adicionar sempre visível (protótipo
@@ -15,6 +16,11 @@ export function usePeoplePage() {
   const people = usePeople()
   const createPerson = useCreatePerson()
   const archivePerson = useArchivePerson()
+  const updatePerson = useUpdatePerson()
+  const [menuId, setMenuId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [nameDraft, setNameDraft] = useState('')
+  const [editError, setEditError] = useState<string | null>(null)
   const [ruleError, setRuleError] = useState<string | null>(null)
   const submissionRef = useRef(0)
   const {
@@ -45,7 +51,40 @@ export function usePeoplePage() {
     }
   })
 
+  const startEdit = (id: string, currentName: string) => {
+    setMenuId(null)
+    setEditingId(id)
+    setNameDraft(currentName)
+    setEditError(null)
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditError(null)
+  }
+
+  const saveEdit = async () => {
+    if (!editingId) return
+    setEditError(null)
+    try {
+      await updatePerson.mutateAsync({ id: editingId, input: { name: nameDraft } })
+      setEditingId(null)
+    } catch (error) {
+      if (!(error instanceof ApiClientError)) throw error
+      const fieldErrors = error.error.details?.fieldErrors as Record<string, string[] | undefined> | undefined
+      setEditError(fieldErrors?.name?.[0] ?? error.error.message)
+    }
+  }
+
   return {
+    editingId,
+    nameDraft,
+    setNameDraft,
+    editError,
+    startEdit,
+    cancelEdit,
+    saveEdit: () => void saveEdit(),
+    isSavingEdit: updatePerson.isPending,
     people: people.data ?? [],
     isLoadingPeople: people.isPending,
     register,
@@ -53,7 +92,13 @@ export function usePeoplePage() {
     onSubmit,
     isSubmitting: createPerson.isPending,
     ruleError,
-    archivePerson: (id: string) => archivePerson.mutate(id),
+    menuPerson: (people.data ?? []).find((person) => person.id === menuId) ?? null,
+    openMenu: (id: string) => setMenuId(id),
+    closeMenu: () => setMenuId(null),
+    archivePerson: (id: string) => {
+      setMenuId(null)
+      archivePerson.mutate(id)
+    },
     archivingId: archivePerson.isPending ? archivePerson.variables : undefined,
   }
 }
