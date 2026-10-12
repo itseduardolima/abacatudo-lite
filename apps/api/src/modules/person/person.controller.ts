@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Que
 import type { Person } from '@gastos/shared'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { CreatePersonDto } from './dto/create-person.dto'
+import { UpdatePersonDto } from './dto/update-person.dto'
 import { PersonService } from './person.service'
 
 @Controller('people')
@@ -16,6 +17,15 @@ export class PersonController {
   @Get()
   list(@CurrentUser() userId: string, @Query('includeArchived') includeArchived?: string): Promise<Person[]> {
     return this.people.list(userId, includeArchived === 'true')
+  }
+
+  @Patch(':id')
+  rename(
+    @CurrentUser() userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: UpdatePersonDto,
+  ): Promise<Person> {
+    return this.people.rename(userId, id, body)
   }
 
   @Patch(':id/archive')

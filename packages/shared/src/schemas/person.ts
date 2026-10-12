@@ -19,3 +19,6 @@ export const createPersonInputSchema = z
   })
   .strict()
 export type CreatePersonInput = z.infer<typeof createPersonInputSchema>
+
+export const updatePersonInputSchema = createPersonInputSchema
+export type UpdatePersonInput = z.infer<typeof updatePersonInputSchema>

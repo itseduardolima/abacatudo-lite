@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import type { Person as PersonRow } from '@prisma/client'
-import type { CreatePersonInput, Person } from '@gastos/shared'
+import type { CreatePersonInput, Person, UpdatePersonInput } from '@gastos/shared'
 import { ForbiddenError, NotFoundError } from '../../common/errors/domain.error'
 import { PersonRepository } from './person.repository'
 
@@ -16,6 +16,14 @@ export class PersonService {
   async list(userId: string, includeArchived: boolean): Promise<Person[]> {
     const rows = await this.repo.findMany(userId, includeArchived)
     return rows.map(toDto)
+  }
+
+  async rename(userId: string, id: string, input: UpdatePersonInput): Promise<Person> {
+    const result = await this.repo.rename(userId, id, input.name)
+    if (result.count === 0) throw new NotFoundError('PERSON_NOT_FOUND', 'Pessoa não encontrada.')
+    const row = await this.repo.findById(userId, id)
+    if (!row) throw new NotFoundError('PERSON_NOT_FOUND', 'Pessoa não encontrada.')
+    return toDto(row)
   }
 
   async archive(userId: string, id: string): Promise<void> {
