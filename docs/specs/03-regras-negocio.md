@@ -177,6 +177,16 @@ Regras:
   para a Person dele, na categoria da transação.
 - Compra parcelada mantém a pessoa nas parcelas futuras (a regra vale para
   o grupo de parcelas).
+  - **Atribuir a compra inteira** (`wholePurchase`): ao corrigir a pessoa ou a divisão de uma parcela, o app
+    pode aplicar a todas as parcelas da mesma compra (o mesmo agrupamento da fatura, `installmentGroupKey`), as
+    já faturadas inclusive: a compra é de quem a fez em todas as parcelas. A divisão por valor vale em
+    proporção em cada parcela, com a soma fechando no valor dela (resto de centavos nos primeiros). Parcela
+    **estimada** (ver "Fatura prevista") só se atribui assim: a tela abre a última parcela real da compra e a
+    atribuição vale pra compra inteira, então as estimadas, que herdam dela, já saem atribuídas.
+  - **Parcela nova do banco herda a atribuição:** no sync, parcela criada agora pega a pessoa e a divisão da
+    parcela anterior da mesma compra (de maior número), em vez de cair no padrão "Meu" ou na `Rule`. Parcela que
+    já existia nunca é reescrita pelo sync. Se a herança falhar, o sync segue e a parcela fica com a pessoa do
+    pipeline normal.
 
 ## Categorias e regras
 

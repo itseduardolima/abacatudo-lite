@@ -1325,3 +1325,8 @@ typecheck/lint/build limpos).
       extrato e lista de lançamentos, no mesmo corte). Sintoma: lançamento com 6 parcelas, cada uma com data de
       compra em um mês diferente, aparecia inteiro e somava R$ 390,60 a mais na fatura do Nubank. A janela do ciclo
       (`after`/`before`) passa junto como `OpenWindow`; parcela sem vencimento não é cortada (2026-10-12).
+
+- [x] Atribuir parcela estimada: tocar numa estimada abre a folha da compra (sem nome, categoria nem cancelar) e a
+      pessoa ou divisão vale pra compra inteira (`wholePurchase` em `PATCH /transactions/:id/person` e `PUT
+  /transactions/:id/split`, divisão proporcional por parcela). A estimada herda da última parcela real, então já
+      sai atribuída; a parcela nova do banco herda a atribuição da anterior no sync (2026-10-12).
