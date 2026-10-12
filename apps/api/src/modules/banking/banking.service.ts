@@ -22,6 +22,7 @@ import {
   type MappedTransaction,
   type SettledPendingTwin,
 } from './banking.mapper'
+import { inheritInstallmentAssignments } from './installment-inheritance'
 import { PluggyClient } from './pluggy/pluggy.client'
 import { PluggyItemRepository } from './pluggy-item.repository'
 
@@ -178,6 +179,16 @@ export class BankingService {
     return this.connect()
   }
 
+  private async inheritInstallmentPeople(userId: string, accountId: string, syncStartedAt: Date): Promise<void> {
+    try {
+      const { rows, createdIds } = await this.sync.findInstallmentRows(userId, accountId, syncStartedAt)
+      if (createdIds.size === 0) return
+      await this.sync.applyInstallmentInheritance(userId, inheritInstallmentAssignments(rows, createdIds))
+    } catch (error) {
+      this.logger.warn(`Não foi possível herdar a pessoa das parcelas da conta ${accountId}: ${describeError(error)}`)
+    }
+  }
+
   private async mergePendingDuplicates(
     userId: string,
     accountId: string,
@@ -230,6 +241,7 @@ export class BankingService {
 
     const selfPerson = await this.people.findSelf(userId)
     if (!selfPerson) throw new DomainError('SELF_PERSON_NOT_FOUND', 'Pessoa "Eu" não encontrada.', 500)
+    const syncStartedAt = new Date()
     const ruleByMerchant = new Map((await this.rules.findMany(userId)).map((rule: Rule) => [rule.merchant, rule]))
     // Chave accountId:cardLast4 — o mesmo final pode existir em contas diferentes (2.3).
     const hintByAccountCard = new Map(
@@ -291,6 +303,7 @@ export class BankingService {
         transactionsSynced++
       }
       await this.mergePendingDuplicates(userId, account.id, twins, mappedAll)
+      await this.inheritInstallmentPeople(userId, account.id, syncStartedAt)
     }
 
     await this.items.update(userId, item.id, { lastSyncAt: new Date() })

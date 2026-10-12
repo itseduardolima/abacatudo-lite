@@ -3,6 +3,7 @@ import type { Transaction } from '@prisma/client'
 import { brasiliaDayStart } from '../../common/date/timezone'
 import { PRISMA, setUserInTransaction, type PrismaService } from '../../prisma/prisma.client'
 import type { MappedTransaction, SettledPendingTwin } from './banking.mapper'
+import type { InstallmentInheritance, InstallmentRowWithSplits } from './installment-inheritance'
 
 @Injectable()
 export class BankingSyncRepository {
@@ -47,6 +48,47 @@ export class BankingSyncRepository {
         installmentDueAt: data.installmentDueAt,
         billId: data.billId,
       },
+    })
+  }
+
+  async findInstallmentRows(
+    userId: string,
+    accountId: string,
+    createdSince: Date,
+  ): Promise<{ rows: InstallmentRowWithSplits[]; createdIds: Set<string> }> {
+    const found = await this.prisma.transaction.findMany({
+      where: {
+        userId,
+        accountId,
+        cancelledAt: null,
+        kind: 'EXPENSE',
+        installmentNumber: { not: null },
+        installmentTotal: { not: null },
+      },
+      include: { splits: { select: { personId: true, amountCents: true } } },
+    })
+    return {
+      rows: found,
+      createdIds: new Set(found.filter((row) => row.createdAt >= createdSince).map((row) => row.id)),
+    }
+  }
+
+  async applyInstallmentInheritance(userId: string, entries: InstallmentInheritance[]): Promise<void> {
+    if (entries.length === 0) return
+    await this.prisma.$transaction(async (tx) => {
+      await setUserInTransaction(tx, userId)
+      for (const entry of entries) {
+        await tx.split.deleteMany({ where: { userId, transactionId: entry.transactionId } })
+        await tx.transaction.updateMany({
+          where: { userId, id: entry.transactionId },
+          data: { personId: entry.personId },
+        })
+        if (entry.splits.length > 0) {
+          await tx.split.createMany({
+            data: entry.splits.map((split) => ({ userId, transactionId: entry.transactionId, ...split })),
+          })
+        }
+      }
     })
   }
 

@@ -53,6 +53,8 @@ function syncMock() {
     upsertTransaction: jest.fn(),
     mergeSettledPending: jest.fn(),
     mergeOrphanPending: jest.fn(),
+    findInstallmentRows: jest.fn().mockResolvedValue({ rows: [], createdIds: new Set() }),
+    applyInstallmentInheritance: jest.fn(),
   } as unknown as jest.Mocked<BankingSyncRepository>
 }
 
@@ -590,6 +592,44 @@ describe('BankingService', () => {
     expect(sync.mergeSettledPending).toHaveBeenCalledWith('user-1', 'acc-1', [
       { pendingId: 'pending-1', postedId: 'posted-1' },
     ])
+  })
+
+  it('manualSync: parcela criada agora herda a pessoa da anterior e erro na herança não derruba o sync', async () => {
+    const items = itemsMock()
+    items.findById.mockResolvedValue(itemRow())
+    const accounts = accountsMock()
+    accounts.upsertFromSync.mockResolvedValue(accountRow())
+    const pluggy = pluggyMock()
+    pluggy.listAccounts.mockResolvedValue([{ id: 'ext-acc-1', type: 'CREDIT', name: 'BB', creditData: null }])
+    pluggy.listTransactions.mockResolvedValueOnce({ results: [], next: null })
+    const sync = syncMock()
+    const row = (id: string, number: number, personId: string, createdAt: Date) => ({
+      id,
+      accountId: 'acc-1',
+      description: `MANAUS ADRI M PARC 0${number}/10 MANAUS      BR`,
+      occurredAt: new Date('2026-08-13T15:00:00.000Z'),
+      amountCents: 10744,
+      installmentNumber: number,
+      installmentTotal: 10,
+      personId,
+      splits: [],
+      createdAt,
+    })
+    sync.findInstallmentRows.mockResolvedValue({
+      rows: [row('tx-1', 1, 'ana', new Date('2026-09-01')), row('tx-2', 2, 'self-1', new Date())],
+      createdIds: new Set(['tx-2']),
+    })
+
+    await newService({ pluggy, items, accounts, sync }).manualSync('user-1', 'item-1')
+
+    expect(sync.findInstallmentRows).toHaveBeenCalledWith('user-1', 'acc-1', expect.any(Date))
+    expect(sync.applyInstallmentInheritance).toHaveBeenCalledWith('user-1', [
+      { transactionId: 'tx-2', personId: 'ana', splits: [] },
+    ])
+
+    pluggy.listTransactions.mockResolvedValueOnce({ results: [], next: null })
+    sync.applyInstallmentInheritance.mockRejectedValueOnce(new Error('boom'))
+    await expect(newService({ pluggy, items, accounts, sync }).manualSync('user-1', 'item-1')).resolves.toBeDefined()
   })
 
   it('manualSync: pede a limpeza das pendentes órfãs com tudo o que o Pluggy devolveu e não falha se a limpeza falhar', async () => {
