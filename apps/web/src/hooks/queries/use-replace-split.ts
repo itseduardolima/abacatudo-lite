@@ -15,6 +15,7 @@ export function useReplaceSplit() {
       void queryClient.invalidateQueries({ queryKey: TRANSACTIONS_QUERY_KEY })
       void queryClient.invalidateQueries({ queryKey: ['invoice'] })
       void queryClient.invalidateQueries({ queryKey: ['budget-pace'] })
+      void queryClient.invalidateQueries({ queryKey: ['estimated-installments'] })
     },
   })
 }

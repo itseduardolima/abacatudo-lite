@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react'
 import type { Segment } from './use-transactions-page'
+import { PersonBadge } from '@/components/finance/PersonBadge'
 import { EstimatedInstallmentsSection } from './estimated-installments-section'
 import { StatementsSheet } from './statements-sheet'
 import { TransactionSheet } from './transaction-sheet'
@@ -13,7 +14,6 @@ import { BankAvatar } from '@/components/finance/BankAvatar'
 import { MoneyText } from '@/components/finance/MoneyText'
 import { formatAccountType } from '@/lib/utils/format-account-type'
 import { formatMonthName } from '@/lib/utils/format-month'
-import { personAvatarClass, personInitial } from '@/lib/utils/person-avatar'
 import { useStatementsSheet } from './use-statements-sheet'
 import { useTransactionsPage } from './use-transactions-page'
 import { ListSkeleton } from '@/components/ui/Skeleton'
@@ -54,6 +54,8 @@ function TransactionsContent() {
     people,
     editingId,
     editingTx,
+    isEditingEstimated,
+    openEstimatedEdit,
     sheetView,
     setSheetView,
     nameDraft,
@@ -302,25 +304,12 @@ function TransactionsContent() {
                       cents={tx.kind === 'REFUND' ? -tx.amountCents : tx.amountCents}
                       className={tx.cancelledAt ? 'line-through' : undefined}
                     />
-                    {/* "Eu" é o padrão (03-regras-negocio § Atribuição de pessoa: toda transação nasce
-                    Meu) — mostrar o avatar nesse caso só repetia informação óbvia em toda linha; só vale
-                    a pena chamar atenção quando é de outra pessoa. */}
-                    {tx.personName && !tx.personIsSelf ? (
-                      <span
-                        className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${personAvatarClass(
-                          tx.personIsSelf,
-                          tx.personOthersIndex,
-                        )}`}
-                      >
-                        {personInitial(tx.personName)}
-                      </span>
-                    ) : tx.isSplit ? (
-                      <span className="rounded-pill bg-tint px-2.5 py-1 text-xs font-medium text-primary-ink">
-                        Dividido
-                      </span>
-                    ) : !tx.personName ? (
-                      <span className="rounded-pill px-2.5 py-1 text-xs text-muted shadow-hair">Sem dono</span>
-                    ) : null}
+                    <PersonBadge
+                      personName={tx.personName}
+                      personIsSelf={tx.personIsSelf}
+                      personOthersIndex={tx.personOthersIndex}
+                      splitPeople={tx.splitPeople}
+                    />
                   </>
                 )}
               </div>
@@ -329,7 +318,7 @@ function TransactionsContent() {
         </div>
       ))}
 
-      <EstimatedInstallmentsSection data={estimatedInstallments} />
+      <EstimatedInstallmentsSection data={estimatedInstallments} onSelect={openEstimatedEdit} />
 
       {statementsSheet.isOpen && (
         <StatementsSheet
@@ -348,6 +337,7 @@ function TransactionsContent() {
       {editingId && editingTx && selectedAccount && (
         <TransactionSheet
           tx={editingTx}
+          isEstimated={isEditingEstimated}
           accountName={selectedAccount.name}
           view={sheetView}
           setView={setSheetView}

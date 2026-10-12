@@ -36,6 +36,7 @@ export interface SheetTransaction {
 
 interface TransactionSheetProps {
   tx: SheetTransaction
+  isEstimated: boolean
   accountName: string
   view: SheetView
   setView: (view: SheetView) => void
@@ -75,6 +76,7 @@ interface TransactionSheetProps {
 // dentro da mesma folha — escolher não fecha, volta pro detalhe (protótipo faz o mesmo).
 export function TransactionSheet({
   tx,
+  isEstimated,
   accountName,
   view,
   setView,
@@ -124,7 +126,7 @@ export function TransactionSheet({
   const isSplit = tx.splits.length > 0
   const canSplit = tx.kind === 'EXPENSE' || tx.kind === 'REFUND'
   const isCancelled = tx.cancelledAt !== null
-  const canCancel = canSplit
+  const canCancel = canSplit && !isEstimated
 
   const splitSumCents = splitPersonIds.reduce(
     (total, personId) => total + (parseMoneyInput(splitAmounts[personId] ?? '0') || 0),
@@ -178,7 +180,7 @@ export function TransactionSheet({
 
             <div>
               <div className="flex items-center justify-between border-b border-surface py-3 text-sm">
-                <span className="text-muted">Data</span>
+                <span className="text-muted">{isEstimated ? 'Vencimento' : 'Data'}</span>
                 <span className="font-medium text-ink">{formatDateTimeLong(tx.occurredAt)}</span>
               </div>
               <div
@@ -228,33 +230,46 @@ export function TransactionSheet({
                       <span className="font-medium text-muted">Sem dono</span>
                     )}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => openNameEdit(tx.displayName ?? tx.merchant ?? tx.description)}
-                    className="flex w-full items-center justify-between border-b border-surface py-3 text-sm"
-                  >
-                    <span className="text-muted">Nome na fatura</span>
-                    <span className="flex items-center gap-1 font-medium text-ink">
-                      {tx.displayName ?? 'Nome do banco'}
-                      <ChevronRight size={16} strokeWidth={1.8} className="text-muted" />
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setView('category')}
-                    className="flex w-full items-center justify-between py-3 text-sm"
-                  >
-                    <span className="text-muted">Categoria</span>
-                    <span className="flex items-center gap-1 font-medium text-ink">
-                      {tx.categoryName ?? 'Sem categoria'}
-                      <ChevronRight size={16} strokeWidth={1.8} className="text-muted" />
-                    </span>
-                  </button>
+                  {!isEstimated && (
+                    <button
+                      type="button"
+                      onClick={() => openNameEdit(tx.displayName ?? tx.merchant ?? tx.description)}
+                      className="flex w-full items-center justify-between border-b border-surface py-3 text-sm"
+                    >
+                      <span className="text-muted">Nome na fatura</span>
+                      <span className="flex items-center gap-1 font-medium text-ink">
+                        {tx.displayName ?? 'Nome do banco'}
+                        <ChevronRight size={16} strokeWidth={1.8} className="text-muted" />
+                      </span>
+                    </button>
+                  )}
+                  {!isEstimated && (
+                    <button
+                      type="button"
+                      onClick={() => setView('category')}
+                      className="flex w-full items-center justify-between py-3 text-sm"
+                    >
+                      <span className="text-muted">Categoria</span>
+                      <span className="flex items-center gap-1 font-medium text-ink">
+                        {tx.categoryName ?? 'Sem categoria'}
+                        <ChevronRight size={16} strokeWidth={1.8} className="text-muted" />
+                      </span>
+                    </button>
+                  )}
                 </>
               )}
             </div>
 
-            {remainingInstallments > 0 && (
+            {isEstimated && (
+              <div className="flex items-start gap-2.5 rounded-card bg-tint px-3.5 py-3 text-sm text-primary-ink">
+                <span>
+                  Parcela estimada: o banco ainda não enviou. Quem gastou vale para todas as parcelas dessa compra e já
+                  fica registrado para quando o banco lançar.
+                </span>
+              </div>
+            )}
+
+            {!isEstimated && remainingInstallments > 0 && (
               <div className="flex items-start gap-2.5 rounded-card bg-tint px-3.5 py-3 text-sm text-primary-ink">
                 <span>
                   Restam {remainingInstallments} parcela{remainingInstallments > 1 ? 's' : ''} de{' '}
@@ -330,7 +345,11 @@ export function TransactionSheet({
                     <Button
                       key={person.id}
                       size="sm"
-                      variant={tx.personId === person.id && !isSplit ? 'primary' : 'outline'}
+                      variant={
+                        (isSplit ? tx.splits.some((split) => split.personId === person.id) : tx.personId === person.id)
+                          ? 'primary'
+                          : 'outline'
+                      }
                       state={isSaving ? 'loading' : 'idle'}
                       onClick={() => selectPerson(tx.id, person.id)}
                     >
@@ -498,7 +517,7 @@ export function TransactionSheet({
               Salvar divisão
             </Button>
 
-            {isSplit && (
+            {isSplit && !isEstimated && (
               <Button type="button" variant="link" onClick={removeSplit} state={isSavingSplit ? 'loading' : 'idle'}>
                 Remover divisão
               </Button>

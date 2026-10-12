@@ -17,6 +17,7 @@ import { useUpdateTransactionCancellation } from '@/hooks/queries/use-update-tra
 import { useUpdateTransactionDisplayName } from '@/hooks/queries/use-update-transaction-display-name'
 import { useUpdateTransactionCategory } from '@/hooks/queries/use-update-transaction-category'
 import { useUpdateTransactionPerson } from '@/hooks/queries/use-update-transaction-person'
+import type { BadgePerson } from '@/components/finance/PersonBadge'
 import { ApiClientError } from '@/lib/api-client'
 import { latestForecastMonth } from '@/lib/utils/latest-forecast-month'
 import { dayGroupLabel } from '@/lib/utils/format-day-group'
@@ -76,6 +77,7 @@ export function useTransactionsPage() {
   const [segment, setSegment] = useState<Segment>('all')
 
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [estimatedKey, setEstimatedKey] = useState<string | null>(null)
   const [sheetView, setSheetView] = useState<SheetView>('detail')
   const [alwaysForMerchant, setAlwaysForMerchant] = useState(false)
   const [ruleError, setRuleError] = useState<string | null>(null)
@@ -94,6 +96,14 @@ export function useTransactionsPage() {
   const categoryNameById = new Map((categories.data ?? []).map((category) => [category.id, category.name]))
   const selfPersonId = (people.data ?? []).find((person) => person.isSelf)?.id
   const othersOrder = (people.data ?? []).filter((person) => !person.isSelf).map((person) => person.id)
+
+  const toSplitPeople = (splits: { personId: string }[]): BadgePerson[] =>
+    splits.flatMap((split) => {
+      const person = (people.data ?? []).find((candidate) => candidate.id === split.personId)
+      return person
+        ? [{ id: person.id, name: person.name, isSelf: person.isSelf, othersIndex: othersOrder.indexOf(person.id) }]
+        : []
+    })
 
   const cardTransactions = (transactions.data ?? []).filter((tx) => tx.accountId === selectedAccountId)
   const filtered = cardTransactions.filter((tx) => {
@@ -116,6 +126,7 @@ export function useTransactionsPage() {
         // de uma pessoa. Não é "Sem dono" (03-regras-negocio § Atribuição de pessoa: toda transação nasce
         // Meu, então null sem split ainda significa Eu, não "sem dono" de verdade).
         isSplit: tx.splits.length > 0,
+        splitPeople: toSplitPeople(tx.splits),
         dayLabel: dayGroupLabel(forecast.isForecast ? (tx.installmentDueAt ?? tx.occurredAt) : tx.occurredAt),
         sortAt: forecast.isForecast ? (tx.installmentDueAt ?? tx.occurredAt) : tx.occurredAt,
       }
@@ -159,9 +170,17 @@ export function useTransactionsPage() {
     }
   }
 
+  const openEstimatedEdit = (key: string) => {
+    const item = estimatedInstallments.data?.items.find((candidate) => candidate.key === key)
+    if (!item) return
+    openEdit(item.sourceTransactionId)
+    setEstimatedKey(key)
+  }
+
   const closeEdit = () => {
     submissionRef.current++
     setEditingId(null)
+    setEstimatedKey(null)
     setSheetView('detail')
     setAlwaysForMerchant(false)
     setRuleError(null)
@@ -193,13 +212,62 @@ export function useTransactionsPage() {
 
   const selectPerson = (transactionId: string, personId: string) =>
     runUpdate(() =>
-      updatePerson.mutateAsync({ id: transactionId, input: { personId, alwaysForMerchant, alwaysForCard: false } }),
+      updatePerson.mutateAsync({
+        id: transactionId,
+        input: {
+          personId,
+          alwaysForMerchant: alwaysForMerchant && estimatedKey === null,
+          alwaysForCard: false,
+          wholePurchase: estimatedKey !== null,
+        },
+      }),
     )
 
   const setCancelled = (transactionId: string, cancelled: boolean) =>
     runUpdate(() => updateCancellation.mutateAsync({ id: transactionId, cancelled }))
 
-  const editingTx = editingId ? (rows.find((row) => row.id === editingId) ?? null) : null
+  const estimatedItem = estimatedKey
+    ? (estimatedInstallments.data?.items.find((item) => item.key === estimatedKey) ?? null)
+    : null
+  const estimatedRows = estimatedInstallments.data && {
+    totalCents: estimatedInstallments.data.totalCents,
+    items: estimatedInstallments.data.items.map((item) => {
+      const person = (people.data ?? []).find((candidate) => candidate.id === item.personId)
+      return {
+        ...item,
+        personName: person?.name ?? null,
+        personIsSelf: person?.isSelf ?? false,
+        personOthersIndex: person ? othersOrder.indexOf(person.id) : -1,
+        splitPeople: toSplitPeople(item.splits),
+      }
+    }),
+  }
+  const estimatedPerson = estimatedItem
+    ? (people.data ?? []).find((person) => person.id === estimatedItem.personId)
+    : null
+  const estimatedTx = estimatedItem
+    ? {
+        id: estimatedItem.sourceTransactionId,
+        kind: 'EXPENSE' as const,
+        amountCents: estimatedItem.amountCents,
+        occurredAt: estimatedItem.dueAt,
+        description: estimatedItem.label,
+        merchant: null,
+        displayName: null,
+        cancelledAt: null,
+        categoryId: null,
+        personId: estimatedItem.personId,
+        cardLast4: null,
+        installmentNumber: estimatedItem.installmentNumber,
+        installmentTotal: estimatedItem.installmentTotal,
+        categoryName: null,
+        personName: estimatedPerson?.name ?? null,
+        personIsSelf: estimatedPerson?.isSelf ?? false,
+        personOthersIndex: estimatedPerson ? othersOrder.indexOf(estimatedPerson.id) : -1,
+        splits: estimatedItem.splits,
+      }
+    : null
+  const editingTx = estimatedTx ?? (editingId ? (rows.find((row) => row.id === editingId) ?? null) : null)
 
   // Abre a divisão já com quem já estava dividido (ou só "Eu" + a pessoa atual, pra começar de algo)
   // marcado — nunca começa vazio.
@@ -249,7 +317,7 @@ export function useTransactionsPage() {
         personId,
         amountCents: parseMoneyInput(splitAmounts[personId] ?? '0'),
       }))
-      await replaceSplit.mutateAsync({ id: editingId, input: { splits } })
+      await replaceSplit.mutateAsync({ id: editingId, input: { splits, wholePurchase: estimatedKey !== null } })
       if (submission !== submissionRef.current) return
       setSheetView('detail')
     } catch (error) {
@@ -280,7 +348,7 @@ export function useTransactionsPage() {
     selectedAccountId,
     setSelectedAccountId,
     invoice: invoice.data,
-    estimatedInstallments: estimatedInstallments.data,
+    estimatedInstallments: estimatedRows,
     forecast,
     segment,
     setSegment,
@@ -289,6 +357,8 @@ export function useTransactionsPage() {
     people: people.data ?? [],
     editingId,
     editingTx,
+    isEditingEstimated: estimatedKey !== null,
+    openEstimatedEdit,
     sheetView,
     setSheetView,
     nameDraft,
