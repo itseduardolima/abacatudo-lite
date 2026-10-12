@@ -55,8 +55,11 @@ describe('InvoiceRepository: fatura aberta com data de fechamento', () => {
   const AFTER = new Date('2026-10-02T03:00:00.000Z')
 
   it.each([
-    ['findOpenRows', (repo: InvoiceRepository) => repo.findOpenRows('user-1', 'acc-1', AFTER)],
-    ['findStatementOpenRows', (repo: InvoiceRepository) => repo.findStatementOpenRows('user-1', 'acc-1', AFTER)],
+    ['findOpenRows', (repo: InvoiceRepository) => repo.findOpenRows('user-1', 'acc-1', { after: AFTER })],
+    [
+      'findStatementOpenRows',
+      (repo: InvoiceRepository) => repo.findStatementOpenRows('user-1', 'acc-1', { after: AFTER }),
+    ],
   ])('%s inclui compra à vista pendente sem fatura só se for dos últimos 7 dias', async (_name, call) => {
     jest.spyOn(Date, 'now').mockReturnValue(NOW_MS)
     const { prisma, transaction } = fakePrisma()

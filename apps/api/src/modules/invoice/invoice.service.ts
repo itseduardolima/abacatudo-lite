@@ -16,7 +16,7 @@ import {
   type InvoiceRow,
 } from './invoice.mapper'
 import { estimateInstallments, type InstallmentSource } from './installment-forecast.mapper'
-import { InvoiceRepository } from './invoice.repository'
+import { InvoiceRepository, type OpenWindow } from './invoice.repository'
 import { buildPersonStatements, formatStatementText, type StatementRow } from './statement.mapper'
 
 const LAST_BILL_TTL_MS = 5 * 60 * 1000
@@ -74,7 +74,7 @@ export class InvoiceService {
     const candidates = isForecast
       ? await this.estimatedInstallments(account, resolveMonthRange(targetMonth))
       : isCurrent
-        ? await this.openEstimatedInstallments(account, await this.openAfter(account))
+        ? await this.openEstimatedInstallments(account, (await this.openWindow(account))?.after)
         : []
     const items = candidates.sort(
       (a, b) => a.dueAt.getTime() - b.dueAt.getTime() || a.label.localeCompare(b.label, 'pt-BR'),
@@ -138,7 +138,7 @@ export class InvoiceService {
       return [...real, ...estimated.map(toStatementRow)]
     }
     return keepNextDueInstallmentOnly(
-      await this.repo.findStatementOpenRows(account.userId, account.id, await this.openAfter(account)),
+      await this.repo.findStatementOpenRows(account.userId, account.id, await this.openWindow(account)),
     )
   }
 
@@ -192,13 +192,13 @@ export class InvoiceService {
       }
     }
 
-    const closing = await this.openAfter(account)
+    const window = await this.openWindow(account)
     const [rows, estimated] = await Promise.all([
-      this.repo.findOpenRows(account.userId, account.id, closing),
-      this.openEstimatedInstallments(account, closing),
+      this.repo.findOpenRows(account.userId, account.id, window),
+      this.openEstimatedInstallments(account, window?.after),
     ])
     const estimatedRows = estimated.map(toInvoiceRow)
-    const settlement = await this.closedBillSettlement(account, closing)
+    const settlement = await this.closedBillSettlement(account, window?.after)
     const advancePaid = settlement.advancePaidCents
     return {
       ...applyAdvancePayment(
@@ -272,7 +272,9 @@ export class InvoiceService {
     if (account.source !== 'PLUGGY' || !account.closingDay || !from) return []
     const until = nextClosingCutoff(account.closingDay)
     const sources = await this.repo.findInstallmentSources(account.userId, account.id)
-    const groupsInOpenCycle = new Set(sources.filter((source) => source.dueAt >= from).map((source) => source.groupKey))
+    const groupsInOpenCycle = new Set(
+      sources.filter((source) => source.dueAt >= from && source.dueAt < until).map((source) => source.groupKey),
+    )
     return estimateInstallments(sources).filter(
       (item) => item.dueAt >= from && item.dueAt < until && !groupsInOpenCycle.has(item.groupKey),
     )
@@ -288,10 +290,13 @@ export class InvoiceService {
     return months.sort().at(-1) ?? null
   }
 
-  private async openAfter(account: AccountWithPluggyItem): Promise<Date | undefined> {
+  private async openWindow(account: AccountWithPluggyItem): Promise<OpenWindow | undefined> {
     if (!account.closingDay) return undefined
     const latestBilled = await this.repo.findLatestBilledPurchaseAt(account.userId, account.id)
-    return resolveLastClosingCutoff(account.closingDay, latestBilled)
+    return {
+      after: resolveLastClosingCutoff(account.closingDay, latestBilled),
+      before: nextClosingCutoff(account.closingDay),
+    }
   }
 
   private async selfPersonId(userId: string): Promise<string> {

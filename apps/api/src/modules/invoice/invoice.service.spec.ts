@@ -1,5 +1,5 @@
 import type { Account as AccountRow, Person as PersonRow } from '@prisma/client'
-import { lastClosingCutoff, monthKey, shiftMonthKey } from '../../common/date/timezone'
+import { lastClosingCutoff, monthKey, nextClosingCutoff, shiftMonthKey } from '../../common/date/timezone'
 import { DomainError, NotFoundError } from '../../common/errors/domain.error'
 import type { AccountRepository, AccountWithPluggyItem } from '../account/account.repository'
 import type { PluggyClient } from '../banking/pluggy/pluggy.client'
@@ -153,7 +153,10 @@ describe('InvoiceService', () => {
 
       await service.getForAccount('user-1', 'acc-1', monthKey(new Date()))
 
-      expect(repo.findOpenRows).toHaveBeenCalledWith('user-1', 'acc-1', lastClosingCutoff(2))
+      expect(repo.findOpenRows).toHaveBeenCalledWith('user-1', 'acc-1', {
+        after: lastClosingCutoff(2),
+        before: nextClosingCutoff(2),
+      })
     })
 
     it('banco que antecipou o fechamento: a última compra da fatura fechada puxa o corte pro dia seguinte a ela', async () => {
@@ -169,7 +172,10 @@ describe('InvoiceService', () => {
 
       await service.getForAccount('user-1', 'acc-1', monthKey(new Date()))
 
-      expect(repo.findOpenRows).toHaveBeenCalledWith('user-1', 'acc-1', new Date(nominal.getTime() - 86_400_000))
+      expect(repo.findOpenRows).toHaveBeenCalledWith('user-1', 'acc-1', {
+        after: new Date(nominal.getTime() - 86_400_000),
+        before: nextClosingCutoff(2),
+      })
     })
 
     it('conta PLUGGY sem fatura fechada ainda (cartão novo): sem saldo anterior', async () => {
