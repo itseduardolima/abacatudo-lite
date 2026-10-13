@@ -7,7 +7,8 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
 COPY packages/config/package.json packages/config/
 COPY packages/shared/package.json packages/shared/
 COPY apps/web/package.json apps/web/
-RUN pnpm install --frozen-lockfile
+# O binário do Cypress (~450 MB) só serve pros testes; o build de produção não usa.
+RUN CYPRESS_INSTALL_BINARY=0 pnpm install --frozen-lockfile
 
 FROM deps AS build
 # Mesma origem em produção: o Caddy serve /api/* na API (docs/specs/01-arquitetura.md § Um domínio só).
