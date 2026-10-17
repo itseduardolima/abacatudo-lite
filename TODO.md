@@ -1180,6 +1180,7 @@ fatura) e `/movements` só com o resto — como o desenho previa.
       falha de um item/usuário não derruba os demais; só itens não `DISCONNECTED`. Manual limitado a 1 por conexão a cada 15 min
       (`429 SYNC_TOO_RECENT`, pelo `lastSyncAt`). Falta: janela `lastSyncAt − 7d` (spec 07)
 - [x] 8.4 — Aviso de reconectar + reconectar, testado ao vivo (falta job diário + e-mail, gap consciente)
+- [x] 8.4b — Aviso de reconectar na tela: `needsReconnect` calculado na API (status `WAITING_USER_INPUT`/`LOGIN_ERROR`/`OUTDATED`/`ERROR` ou consentimento vencido) e banner com botão "Reconectar" no Início e em Contas (2026-10-17, motivo: sync diário rodava mas o Pluggy não atualizava e nada aparecia)
 - [x] 8.5 — Desconectar, testado ao vivo
 - [x] Renomear conta: `PATCH /accounts/:id` aceita `name` (o sync nunca escreve o nome no update, então o nome
       escolhido sobrevive). Em Contas, cada linha tem um botão "⋯" que abre a folha de ações (editar nome,

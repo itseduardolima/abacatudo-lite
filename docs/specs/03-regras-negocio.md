@@ -398,6 +398,9 @@ e **só sobre compras no cartão** (Pix e contas ficam de fora):
   revogar no app do banco). Se o item tiver data de expiração, avisar com 30 e 7 dias de antecedência
   (in-app + e-mail). **Dado que vem vazio de repente é "reconectar", nunca "sem gastos"**. Item com
   erro/expirado/revogado não apaga dados já importados.
+  A API marca `needsReconnect` quando o status é `WAITING_USER_INPUT`, `LOGIN_ERROR`, `OUTDATED` ou `ERROR`, ou
+  quando `consentExpiresAt` já passou (nunca em `DISCONNECTED`); o app mostra o aviso "Reconectar" no Início e
+  em Contas.
 - Desconectar um banco: revoga o Item no Pluggy; as transações já
   importadas **permanecem** (histórico), marcadas como conta desconectada.
 - Falha de sync nunca mostra número parcial como se fosse completo: o
