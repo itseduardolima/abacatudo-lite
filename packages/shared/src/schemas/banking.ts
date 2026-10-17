@@ -25,6 +25,7 @@ export const bankConnectionSchema = z
     // Aviso de reconectar (8.4): 30/7 dias antes de consentExpiresAt vencer, calculado na hora — null sem
     // data de expiração (a maioria dos bancos) ou fora da janela de aviso.
     reconnectWarningDays: z.union([z.literal(7), z.literal(30)]).nullable(),
+    needsReconnect: z.boolean(),
   })
   .strict()
 export type BankConnection = z.infer<typeof bankConnectionSchema>

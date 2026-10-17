@@ -3,6 +3,7 @@ import {
   findSettledPendingTwins,
   mapAccountFields,
   mapTransaction,
+  needsReconnect,
   reconnectWarningDays,
   resolveKind,
   type MappedTransaction,
@@ -270,5 +271,31 @@ describe('findSettledPendingTwins', () => {
 
   it('pendente que já tem fatura não é descartada', () => {
     expect(findSettledPendingTwins([mapped({ externalId: 'billed', billId: 'bill-9' }), posted])).toEqual([])
+  })
+})
+
+describe('needsReconnect', () => {
+  const now = new Date('2026-10-17T12:00:00.000Z')
+  const past = new Date('2026-10-01T12:00:00.000Z')
+  const future = new Date('2026-11-30T12:00:00.000Z')
+
+  it.each(['WAITING_USER_INPUT', 'LOGIN_ERROR', 'OUTDATED', 'ERROR'] as const)('status %s pede reconexão', (status) => {
+    expect(needsReconnect(status, null, now)).toBe(true)
+  })
+
+  it('item atualizado e sem data de expiração não pede', () => {
+    expect(needsReconnect('UPDATED', null, now)).toBe(false)
+  })
+
+  it('consentimento vencido pede reconexão mesmo com status UPDATED', () => {
+    expect(needsReconnect('UPDATED', past, now)).toBe(true)
+  })
+
+  it('consentimento ainda válido não pede', () => {
+    expect(needsReconnect('UPDATED', future, now)).toBe(false)
+  })
+
+  it('banco desconectado de propósito nunca pede', () => {
+    expect(needsReconnect('DISCONNECTED', past, now)).toBe(false)
   })
 })

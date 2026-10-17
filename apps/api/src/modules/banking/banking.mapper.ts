@@ -1,4 +1,4 @@
-import type { Prisma, AccountType, TransactionKind, TransactionStatus } from '@prisma/client'
+import type { Prisma, AccountType, PluggyItemStatus, TransactionKind, TransactionStatus } from '@prisma/client'
 import { brasiliaDayStart, dayFromDateString } from '../../common/date/timezone'
 import type { PluggyAccount, PluggyTransaction } from './pluggy/pluggy.schemas'
 
@@ -123,4 +123,12 @@ export function reconnectWarningDays(consentExpiresAt: Date | null, now: Date): 
   if (daysLeft <= 7) return 7
   if (daysLeft <= 30) return 30
   return null
+}
+
+const RECONNECT_STATUSES: PluggyItemStatus[] = ['WAITING_USER_INPUT', 'LOGIN_ERROR', 'OUTDATED', 'ERROR']
+
+export function needsReconnect(status: PluggyItemStatus, consentExpiresAt: Date | null, now: Date): boolean {
+  if (status === 'DISCONNECTED') return false
+  if (RECONNECT_STATUSES.includes(status)) return true
+  return consentExpiresAt != null && consentExpiresAt.getTime() <= now.getTime()
 }
