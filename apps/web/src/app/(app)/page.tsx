@@ -6,6 +6,7 @@ import { HeroCarousel } from './hero-carousel'
 import { PaceHeroCard } from './pace-hero-card'
 import { HeroSkeleton, InvoicesSkeleton } from './home-skeleton'
 import { useHomePage } from './use-home-page'
+import { ReconnectBanner } from '@/components/finance/ReconnectBanner'
 import { Logo } from '@/components/ui/Logo'
 import { MonthStepper } from '@/components/ui/MonthStepper'
 import { formatMonthName } from '@/lib/utils/format-month'
@@ -25,6 +26,7 @@ export default function HomePage() {
     onConnectBank,
     isConnectingBank,
     connectError,
+    reconnectBanner,
   } = useHomePage()
   const hasNoCard = !isLoadingAccounts && cardAccounts.length === 0
   const isLoadingHome = isLoadingMe || isLoadingAccounts
@@ -34,6 +36,8 @@ export default function HomePage() {
       <div className="flex items-center justify-between">
         <Logo height={32} />
       </div>
+
+      <ReconnectBanner {...reconnectBanner} />
 
       {(isLoadingHome || (!hasNoCard && isLoadingPace)) && <HeroSkeleton />}
       {isLoadingHome && <InvoicesSkeleton />}
