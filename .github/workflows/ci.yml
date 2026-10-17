@@ -117,6 +117,7 @@ jobs:
             ./scripts/deploy-check.sh
             docker compose up -d --build web api
             ./scripts/connect-shared-network.sh
+            ./scripts/publish-caddy-site.sh lite infra/caddy/lite.caddy
             # --build sem limpeza deixa imagem/camada órfã a cada deploy.
             docker image prune -f
       - name: Wait for the API to answer /health
