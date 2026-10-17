@@ -1,6 +1,6 @@
 #!/bin/sh
 # Anexa web/api à rede default de outro projeto Docker Compose que já é dono das portas 80/443
-# nesta VPS (hoje: pdv-web) — para o Caddy dele alcançar estes containers pelo nome.
+# nesta VPS (stack `proxy`, rede `edge`) — para o Caddy dele alcançar estes containers pelo nome.
 #
 # Só existe como script porque isso NÃO pode ser feito via `networks:` no docker-compose.yml: o
 # Compose, ao conectar um serviço a qualquer rede (mesmo externa), registra um alias DNS igual ao
@@ -12,7 +12,7 @@
 # TODO `docker compose up` que recria web/api (a reconexão à outra rede não sobrevive ao recreate).
 set -e
 
-SHARED_NETWORK="${SHARED_NETWORK:-pdv-web_default}"
+SHARED_NETWORK="${SHARED_NETWORK:-edge}"
 CONTAINERS="abacatudo-lite-web-1 abacatudo-lite-api-1"
 
 for c in $CONTAINERS; do

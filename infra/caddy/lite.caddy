@@ -1,0 +1,20 @@
+lite.eduardolima.tech {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+	handle_path /api/* {
+		request_body {
+			max_size 6MB
+		}
+		reverse_proxy abacatudo-lite-api-1:3001
+	}
+	handle {
+		reverse_proxy abacatudo-lite-web-1:3000
+	}
+}
