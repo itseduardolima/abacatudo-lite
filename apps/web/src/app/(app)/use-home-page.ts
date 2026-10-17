@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useForecastMonth } from '@/hooks/use-forecast-month'
-import { useReconnectBanner } from '@/hooks/use-reconnect-banner'
 import { useAccounts } from '@/hooks/queries/use-accounts'
 import { useBudgetPace } from '@/hooks/queries/use-budget-pace'
 import { useConnectBank } from '@/hooks/queries/use-connect-bank'
@@ -18,7 +17,6 @@ export function useHomePage() {
   const me = useMe()
   const accounts = useAccounts()
   const connectBank = useConnectBank()
-  const reconnectBanner = useReconnectBanner()
   const [connectError, setConnectError] = useState<string | null>(null)
 
   // O middleware só olha se o cookie existe, nunca se a sessão ainda é válida — quem confirma de verdade
@@ -65,6 +63,5 @@ export function useHomePage() {
     onConnectBank,
     isConnectingBank: connectBank.isPending,
     connectError,
-    reconnectBanner,
   }
 }
