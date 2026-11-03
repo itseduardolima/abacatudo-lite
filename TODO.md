@@ -1336,5 +1336,5 @@ typecheck/lint/build limpos).
 
 - [x] Portado do gastos-web (2026-11-03): fatura de mês passado pelo ciclo fechado (Início e `/transactions`, seta ◀
       até `firstMonth`), aviso de dado defasado (`staleSince`), `Account.closingOffsetDays` para o Nubank (fecha 7 dias
-      antes do vencimento), valor em reais de compra em moeda estrangeira, estorno cancela parcelas pendentes e ir ao
-      início após salvar a renda. Ficou de fora o que o lite não tem (quinzenas, gastos fixos, conta de benefício).
+      antes do vencimento), valor em reais de compra em moeda estrangeira, e estorno cancela parcelas pendentes.
+      Ir ao início após salvar a renda já existia aqui. Ficou de fora o que o lite não tem (quinzenas, gastos fixos, conta de benefício).
