@@ -2,6 +2,7 @@ import {
   closedCycleRange,
   closingBeforeDue,
   lastClosingCutoff,
+  nextClosingCutoff,
   resolveLastClosingCutoff,
   dateKey,
   dayFromDateString,
@@ -173,5 +174,38 @@ describe('closedCycleRange com fechamento dias antes do vencimento', () => {
     expect(closingBeforeDue({ dueDay: 3, closingOffsetDays: 7 })).toEqual(beforeDue)
     expect(closingBeforeDue({ dueDay: null, closingOffsetDays: 7 })).toBeUndefined()
     expect(closingBeforeDue({ dueDay: 3, closingOffsetDays: null })).toBeUndefined()
+  })
+})
+
+describe('fechamento aberto com dias antes do vencimento', () => {
+  const beforeDue = { dueDay: 3, offsetDays: 7 }
+  const iso = (date: Date) => date.toISOString()
+
+  it('em 03/11 o último fechamento foi 27/10 e o próximo é 26/11', () => {
+    const now = new Date('2026-11-03T15:00:00.000Z')
+    expect(iso(lastClosingCutoff(27, now, beforeDue))).toBe('2026-10-27T03:00:00.000Z')
+    expect(iso(nextClosingCutoff(27, now, beforeDue))).toBe('2026-11-26T03:00:00.000Z')
+  })
+
+  it('no dia do fechamento já vale o novo ciclo; na véspera ainda não', () => {
+    expect(iso(lastClosingCutoff(27, new Date('2026-11-26T12:00:00.000Z'), beforeDue))).toBe('2026-11-26T03:00:00.000Z')
+    expect(iso(lastClosingCutoff(27, new Date('2026-11-25T12:00:00.000Z'), beforeDue))).toBe('2026-10-27T03:00:00.000Z')
+  })
+
+  it('virada de ano: em 10/01 o último fechamento foi 27/12 e o próximo é 27/01', () => {
+    const now = new Date('2027-01-10T12:00:00.000Z')
+    expect(iso(lastClosingCutoff(27, now, beforeDue))).toBe('2026-12-27T03:00:00.000Z')
+    expect(iso(nextClosingCutoff(27, now, beforeDue))).toBe('2027-01-27T03:00:00.000Z')
+  })
+
+  it('o ajuste por compra faturada continua valendo por cima do nominal', () => {
+    const now = new Date('2026-11-03T15:00:00.000Z')
+    const latestBilled = new Date('2026-10-25T15:00:00.000Z')
+    expect(iso(resolveLastClosingCutoff(27, latestBilled, now, beforeDue))).toBe('2026-10-26T03:00:00.000Z')
+  })
+
+  it('sem beforeDue mantém o dia fixo', () => {
+    const now = new Date('2026-11-03T15:00:00.000Z')
+    expect(iso(nextClosingCutoff(27, now))).toBe('2026-11-27T03:00:00.000Z')
   })
 })

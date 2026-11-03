@@ -1338,3 +1338,5 @@ typecheck/lint/build limpos).
       até `firstMonth`), aviso de dado defasado (`staleSince`), `Account.closingOffsetDays` para o Nubank (fecha 7 dias
       antes do vencimento), valor em reais de compra em moeda estrangeira, e estorno cancela parcelas pendentes.
       Ir ao início após salvar a renda já existia aqui. Ficou de fora o que o lite não tem (quinzenas, gastos fixos, conta de benefício).
+
+- [x] Fatura aberta do Nubank usa o fechamento por dias antes do vencimento (último, próximo e janela das parcelas), portado do gastos-web (2026-11-03).

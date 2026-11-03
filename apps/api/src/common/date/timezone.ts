@@ -116,7 +116,11 @@ export const PENDING_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000
 // para uma compra costuma vir 00:00 de Brasília, que em Manaus seria 23:00 do dia anterior. Como
 // no Nubank e no "melhor dia de compra" dos bancos, a compra feita no dia do fechamento já vai pra fatura
 // seguinte. O que for lançado a partir daqui pertence à fatura aberta. Dia > fim do mês cai no último dia.
-export function lastClosingCutoff(closingDay: number, now: Date = new Date()): Date {
+export function lastClosingCutoff(closingDay: number, now: Date = new Date(), beforeDue?: ClosingBeforeDue): Date {
+  if (beforeDue)
+    return closingCutoffsAround(closingDay, now, beforeDue)
+      .filter((cutoff) => cutoff <= now)
+      .at(-1) as Date
   const { year, month, day } = zonedParts(now)
   const closingIn = (y: number, m: number) => Math.min(closingDay, new Date(Date.UTC(y, m, 0)).getUTCDate())
   const [y, m] = closingIn(year, month) <= day ? [year, month] : month === 1 ? [year - 1, 12] : [year, month - 1]
@@ -136,15 +140,17 @@ export function resolveLastClosingCutoff(
   closingDay: number,
   latestBilledPurchaseAt: Date | null,
   now: Date = new Date(),
+  beforeDue?: ClosingBeforeDue,
 ): Date {
-  const nominal = lastClosingCutoff(closingDay, now)
+  const nominal = lastClosingCutoff(closingDay, now, beforeDue)
   if (!latestBilledPurchaseAt) return nominal
   const observed = new Date(brasiliaDayStart(latestBilledPurchaseAt).getTime() + DAY_MS)
   const shift = nominal.getTime() - observed.getTime()
   return shift >= 0 && shift <= CLOSING_SHIFT_MAX_MS ? observed : nominal
 }
 
-export function nextClosingCutoff(closingDay: number, now: Date = new Date()): Date {
+export function nextClosingCutoff(closingDay: number, now: Date = new Date(), beforeDue?: ClosingBeforeDue): Date {
+  if (beforeDue) return closingCutoffsAround(closingDay, now, beforeDue).find((cutoff) => cutoff > now) as Date
   return lastClosingCutoff(closingDay, new Date(lastClosingCutoff(closingDay, now).getTime() + 32 * 86_400_000))
 }
 
@@ -154,12 +160,17 @@ export interface ClosingBeforeDue {
 }
 
 export function closingBeforeDue(account: {
-  dueDay: number | null
-  closingOffsetDays: number | null
+  dueDay?: number | null
+  closingOffsetDays?: number | null
 }): ClosingBeforeDue | undefined {
   return account.dueDay != null && account.closingOffsetDays != null
     ? { dueDay: account.dueDay, offsetDays: account.closingOffsetDays }
     : undefined
+}
+
+function closingCutoffsAround(closingDay: number, now: Date, beforeDue: ClosingBeforeDue): Date[] {
+  const current = monthKey(now)
+  return [-1, 0, 1, 2].map((delta) => closingCutoffInMonth(closingDay, shiftMonthKey(current, delta), beforeDue))
 }
 
 export function closingCutoffInMonth(closingDay: number, monthKeyValue: string, beforeDue?: ClosingBeforeDue): Date {

@@ -403,7 +403,7 @@ e **só sobre compras no cartão** (Pix e contas ficam de fora):
   Sem `closingDay`, ou conta `MANUAL`/`IMPORT`, cai no mês calendário. A seta ◀ vai até o primeiro mês do cartão
   (`firstMonth`). A tela Fatura lista as mesmas linhas e a mensagem de conta usa o mesmo ciclo.
 - **Nubank** fecha 7 dias antes do vencimento, cruzando o mês: o fechamento é o vencimento do mês seguinte menos
-  `Account.closingOffsetDays` (26/09, 27/10...), preenchido no sync só para esse caso. Conferido contra o OFX do banco.
+  `Account.closingOffsetDays` (26/09, 27/10...), preenchido no sync só para esse caso. Conferido contra o OFX do banco Vale também para a fatura aberta (último e próximo fechamento).
 - **Dado defasado:** se a última compra recebida do banco (cartão `PLUGGY`, mês atual) tem 3 dias ou mais, a linha do
   cartão avisa a data (`staleSince`). O Pluggy às vezes para de mandar dados de um cartão.
 - **Moeda estrangeira:** compra fora do BRL usa `amountInAccountCurrency` (reais), não o `amount` na moeda original.

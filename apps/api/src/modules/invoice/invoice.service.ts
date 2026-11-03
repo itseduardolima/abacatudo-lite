@@ -330,7 +330,7 @@ export class InvoiceService {
     from: Date | undefined,
   ): Promise<InstallmentSource[]> {
     if (account.source !== 'PLUGGY' || !account.closingDay || !from) return []
-    const until = nextClosingCutoff(account.closingDay)
+    const until = nextClosingCutoff(account.closingDay, new Date(), closingBeforeDue(account))
     const sources = await this.repo.findInstallmentSources(account.userId, account.id)
     const groupsInOpenCycle = new Set(
       sources.filter((source) => source.dueAt >= from && source.dueAt < until).map((source) => source.groupKey),
@@ -354,8 +354,8 @@ export class InvoiceService {
     if (!account.closingDay) return undefined
     const latestBilled = await this.repo.findLatestBilledPurchaseAt(account.userId, account.id)
     return {
-      after: resolveLastClosingCutoff(account.closingDay, latestBilled),
-      before: nextClosingCutoff(account.closingDay),
+      after: resolveLastClosingCutoff(account.closingDay, latestBilled, new Date(), closingBeforeDue(account)),
+      before: nextClosingCutoff(account.closingDay, new Date(), closingBeforeDue(account)),
     }
   }
 
