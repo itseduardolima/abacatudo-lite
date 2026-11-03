@@ -19,7 +19,7 @@ import { useUpdateTransactionCategory } from '@/hooks/queries/use-update-transac
 import { useUpdateTransactionPerson } from '@/hooks/queries/use-update-transaction-person'
 import type { BadgePerson } from '@/components/finance/PersonBadge'
 import { ApiClientError } from '@/lib/api-client'
-import { latestForecastMonth } from '@/lib/utils/latest-forecast-month'
+import { earliestHistoryMonth, latestForecastMonth } from '@/lib/utils/latest-forecast-month'
 import { dayGroupLabel } from '@/lib/utils/format-day-group'
 import { formatMoney, parseMoneyInput } from '@/lib/utils/format-money'
 
@@ -69,8 +69,9 @@ export function useTransactionsPage() {
   const forecast = useForecastMonth(
     latestForecastMonth(currentInvoices.map((query) => query.data?.lastForecastMonth)),
     useSearchParams().get('month'),
+    earliestHistoryMonth(currentInvoices.map((query) => query.data?.firstMonth)),
   )
-  const forecastMonth = forecast.isForecast ? forecast.month : undefined
+  const forecastMonth = forecast.isCurrent ? undefined : forecast.month
   const invoice = useInvoice(selectedAccountId, forecastMonth)
   const transactions = useTransactions(forecastMonth)
   const estimatedInstallments = useEstimatedInstallments(selectedAccountId, forecast.month)
@@ -127,8 +128,8 @@ export function useTransactionsPage() {
         // Meu, então null sem split ainda significa Eu, não "sem dono" de verdade).
         isSplit: tx.splits.length > 0,
         splitPeople: toSplitPeople(tx.splits),
-        dayLabel: dayGroupLabel(forecast.isForecast ? (tx.installmentDueAt ?? tx.occurredAt) : tx.occurredAt),
-        sortAt: forecast.isForecast ? (tx.installmentDueAt ?? tx.occurredAt) : tx.occurredAt,
+        dayLabel: dayGroupLabel(forecast.isCurrent ? tx.occurredAt : (tx.installmentDueAt ?? tx.occurredAt)),
+        sortAt: forecast.isCurrent ? tx.occurredAt : (tx.installmentDueAt ?? tx.occurredAt),
       }
     })
     .sort((a, b) => b.sortAt.localeCompare(a.sortAt))

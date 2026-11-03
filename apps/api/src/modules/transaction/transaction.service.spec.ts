@@ -19,6 +19,7 @@ function repoMock() {
     create: jest.fn(),
     findMany: jest.fn(),
     findForecast: jest.fn(),
+    findClosedCycle: jest.fn(),
     findPurchaseCandidates: jest.fn(),
     findPurchaseGroup: jest.fn(),
     findUnbilledPurchaseCandidates: jest.fn(),
@@ -120,6 +121,7 @@ function accountRow(overrides: Partial<AccountRow> = {}): AccountWithPluggyItem 
     type: 'CASH',
     source: 'MANUAL',
     closingDay: null,
+    closingOffsetDays: null,
     dueDay: null,
     creditLimitCents: null,
     bankLogo: null,
@@ -333,17 +335,32 @@ describe('TransactionService', () => {
     jest.useRealTimers()
   })
 
-  it('listByMonth: o mês atual e os passados continuam no caminho de sempre', async () => {
+  it('listByMonth: o mês atual continua no caminho de sempre', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-09-21T12:00:00.000Z'))
     const repo = repoMock()
     repo.findMany.mockResolvedValue([])
     const service = newService({ repo })
 
     await service.listByMonth('user-1', '2026-09')
-    await service.listByMonth('user-1', '2026-08')
 
-    expect(repo.findMany).toHaveBeenCalledTimes(2)
+    expect(repo.findMany).toHaveBeenCalledTimes(1)
     expect(repo.findForecast).not.toHaveBeenCalled()
+    expect(repo.findClosedCycle).not.toHaveBeenCalled()
+    jest.useRealTimers()
+  })
+
+  it('listByMonth: mês passado lista o ciclo que fechou nele, sem passar pela fatura aberta', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-09-21T12:00:00.000Z'))
+    const repo = repoMock()
+    repo.findClosedCycle.mockResolvedValue([row()])
+    const service = newService({ repo })
+
+    const result = await service.listByMonth('user-1', '2026-08')
+
+    expect(repo.findClosedCycle).toHaveBeenCalledWith('user-1', '2026-08')
+    expect(repo.findMany).not.toHaveBeenCalled()
+    expect(repo.findForecast).not.toHaveBeenCalled()
+    expect(result).toHaveLength(1)
     jest.useRealTimers()
   })
 

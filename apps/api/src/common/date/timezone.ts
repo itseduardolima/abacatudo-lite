@@ -147,3 +147,40 @@ export function resolveLastClosingCutoff(
 export function nextClosingCutoff(closingDay: number, now: Date = new Date()): Date {
   return lastClosingCutoff(closingDay, new Date(lastClosingCutoff(closingDay, now).getTime() + 32 * 86_400_000))
 }
+
+export interface ClosingBeforeDue {
+  dueDay: number
+  offsetDays: number
+}
+
+export function closingBeforeDue(account: {
+  dueDay: number | null
+  closingOffsetDays: number | null
+}): ClosingBeforeDue | undefined {
+  return account.dueDay != null && account.closingOffsetDays != null
+    ? { dueDay: account.dueDay, offsetDays: account.closingOffsetDays }
+    : undefined
+}
+
+export function closingCutoffInMonth(closingDay: number, monthKeyValue: string, beforeDue?: ClosingBeforeDue): Date {
+  const [year, month] = monthKeyValue.split('-').map(Number) as [number, number]
+  if (beforeDue) {
+    const [dueYear, dueMonth] = shiftMonthKey(monthKeyValue, 1).split('-').map(Number) as [number, number]
+    const dueLastDay = new Date(Date.UTC(dueYear, dueMonth, 0)).getUTCDate()
+    const due = Date.UTC(dueYear, dueMonth - 1, Math.min(beforeDue.dueDay, dueLastDay), 3)
+    return new Date(due - beforeDue.offsetDays * DAY_MS)
+  }
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  return new Date(Date.UTC(year, month - 1, Math.min(closingDay, lastDay), 3))
+}
+
+export function closedCycleRange(
+  closingDay: number,
+  monthKeyValue: string,
+  beforeDue?: ClosingBeforeDue,
+): { start: Date; end: Date } {
+  return {
+    start: closingCutoffInMonth(closingDay, shiftMonthKey(monthKeyValue, -1), beforeDue),
+    end: closingCutoffInMonth(closingDay, monthKeyValue, beforeDue),
+  }
+}

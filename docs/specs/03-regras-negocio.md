@@ -233,6 +233,11 @@ pode marcar a compra como cancelada (`Transaction.cancelledAt`), e reverter.
 - **O sync não mexe:** `upsertTransaction` nunca escreve `cancelledAt`, então um
   novo sync mantém a marca.
 - Reversível: `PATCH /transactions/:id/cancellation` com `{ cancelled: false }`.
+- **Estorno cancela as parcelas pendentes:** no sync, um estorno ("Estorno de ...") de valor igual ao de uma parcela
+  já faturada (data igual ou posterior à compra) cancela as parcelas `PENDING` sem `billId` da mesma compra. O banco
+  tira essas parcelas, mas o Pluggy continua devolvendo. Cada estorno cancela no máximo uma compra, e o estorno segue
+  como crédito na fatura onde a parcela foi cobrada. Reativar à mão volta a ser cancelado no sync seguinte enquanto o
+  estorno existir.
 
 ## Só a minha parte (gasto de terceiros no meu cartão)
 
@@ -389,6 +394,19 @@ e **só sobre compras no cartão** (Pix e contas ficam de fora):
 - **Onde economizar**: ranking por potencial = variação para cima +
   recorrências candidatas a cancelar + categorias acima do normal; cada
   item traz o cálculo por trás (nunca só um texto).
+
+## Fatura de mês passado e dado defasado
+
+- **Mês passado** (Início e tela Fatura): o mês `M` é a fatura que **fechou em `M`**. Nada é gravado: para cartão
+  `PLUGGY` com `closingDay`, soma compras e parcelas (`installmentDueAt`, senão `occurredAt`) do ciclo que vai do
+  fechamento do mês anterior (inclusive) ao do mês `M` (exclusive), sem abater pagamento nem mostrar saldo anterior.
+  Sem `closingDay`, ou conta `MANUAL`/`IMPORT`, cai no mês calendário. A seta ◀ vai até o primeiro mês do cartão
+  (`firstMonth`). A tela Fatura lista as mesmas linhas e a mensagem de conta usa o mesmo ciclo.
+- **Nubank** fecha 7 dias antes do vencimento, cruzando o mês: o fechamento é o vencimento do mês seguinte menos
+  `Account.closingOffsetDays` (26/09, 27/10...), preenchido no sync só para esse caso. Conferido contra o OFX do banco.
+- **Dado defasado:** se a última compra recebida do banco (cartão `PLUGGY`, mês atual) tem 3 dias ou mais, a linha do
+  cartão avisa a data (`staleSince`). O Pluggy às vezes para de mandar dados de um cartão.
+- **Moeda estrangeira:** compra fora do BRL usa `amountInAccountCurrency` (reais), não o `amount` na moeda original.
 
 ## Sincronização bancária
 

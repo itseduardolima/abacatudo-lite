@@ -1,6 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common'
 import type { AccountInvoice, EstimatedInstallmentsResponse, Invoice, StatementsResponse } from '@gastos/shared'
-import { monthKey, nextClosingCutoff, resolveLastClosingCutoff, resolveMonthRange } from '../../common/date/timezone'
+import {
+  closedCycleRange,
+  closingBeforeDue,
+  monthKey,
+  nextClosingCutoff,
+  resolveLastClosingCutoff,
+  resolveMonthRange,
+} from '../../common/date/timezone'
 import { DomainError, NotFoundError } from '../../common/errors/domain.error'
 import { AccountRepository, type AccountWithPluggyItem } from '../account/account.repository'
 import { PluggyClient } from '../banking/pluggy/pluggy.client'
@@ -12,12 +19,15 @@ import {
   applyAdvancePayment,
   computeInvoice,
   keepNextDueInstallmentOnly,
+  laggingSince,
   mergeInvoices,
   type InvoiceRow,
 } from './invoice.mapper'
 import { estimateInstallments, type InstallmentSource } from './installment-forecast.mapper'
 import { InvoiceRepository, type OpenWindow } from './invoice.repository'
 import { buildPersonStatements, formatStatementText, type StatementRow } from './statement.mapper'
+
+type AccountActivity = { staleSince: string | null; firstMonth: string | null }
 
 const LAST_BILL_TTL_MS = 5 * 60 * 1000
 
@@ -46,9 +56,11 @@ export class InvoiceService {
     const lastForecastMonth = await this.lastForecastMonth(account)
 
     const invoice = await this.invoiceForAccount(account, selfId, month)
+    const activity = await this.activityFor(account, month)
 
     return {
       ...invoice,
+      ...activity,
       payableCents: invoice.totalCents + invoice.previousBillRemainingCents,
       isForecast: this.isForecastFor(account, month),
       lastForecastMonth,
@@ -132,7 +144,17 @@ export class InvoiceService {
     range: { start: Date; end: Date },
     isForecast: boolean,
   ): Promise<StatementRow[]> {
-    if (account.source !== 'PLUGGY') return this.repo.findStatementCalendarRows(account.userId, account.id, range)
+    const month = monthKey(range.start)
+    if (this.isClosedCycleFor(account, month)) {
+      return this.repo.findStatementClosedCycleRows(
+        account.userId,
+        account.id,
+        closedCycleRange(account.closingDay as number, month, closingBeforeDue(account)),
+      )
+    }
+    if (account.source !== 'PLUGGY' || month < monthKey(new Date())) {
+      return this.repo.findStatementCalendarRows(account.userId, account.id, range)
+    }
     if (isForecast) {
       const [real, estimated] = await Promise.all([
         this.repo.findStatementForecastRows(account.userId, account.id, range),
@@ -146,15 +168,15 @@ export class InvoiceService {
   }
 
   // "Meu" da fatura aberta, somado em todos os cartões (03-regras-negocio § Só a minha parte) — é o
-  // número que alimenta o ritmo (HU 7.4). É a fatura de agora; não existe "mês passado" aqui. Só um mês
+  // número que alimenta o ritmo (HU 7.4). É a fatura de agora, ou o ciclo fechado de um mês passado. Só um mês
   // futuro muda o resultado: aí soma a fatura prevista de cada cartão (só parcelas já lançadas).
   async getSummary(userId: string, month?: string): Promise<Invoice> {
     const selfId = await this.selfPersonId(userId)
     const cardAccounts = (await this.accounts.findMany(userId, false)).filter((a) => a.type === 'CREDIT_CARD')
-    const futureMonth = month && resolveMonthKey(month) > monthKey(new Date()) ? month : undefined
+    const otherMonth = month && resolveMonthKey(month) !== monthKey(new Date()) ? month : undefined
 
     const invoices = await Promise.all(
-      cardAccounts.map((account) => this.invoiceForAccount(account, selfId, futureMonth)),
+      cardAccounts.map((account) => this.invoiceForAccount(account, selfId, otherMonth)),
     )
     return mergeInvoices(invoices)
   }
@@ -163,6 +185,27 @@ export class InvoiceService {
   // só a parcela da vez em compra parcelada. Fatura já fechada não entra. MANUAL/IMPORT: mês calendário.
   private isForecastFor(account: AccountWithPluggyItem, month?: string): boolean {
     return account.source === 'PLUGGY' && Boolean(month) && resolveMonthKey(month as string) > monthKey(new Date())
+  }
+
+  private isClosedCycleFor(account: AccountWithPluggyItem, month?: string): boolean {
+    return (
+      account.source === 'PLUGGY' &&
+      account.closingDay !== null &&
+      Boolean(month) &&
+      resolveMonthKey(month as string) < monthKey(new Date())
+    )
+  }
+
+  private async activityFor(account: AccountWithPluggyItem, month?: string): Promise<AccountActivity> {
+    if (account.source !== 'PLUGGY') return { staleSince: null, firstMonth: null }
+    const now = new Date()
+    const { firstAt, lastAt } = await this.repo.findActivityBounds(account.userId, account.id, now)
+    const isCurrent = !month || resolveMonthKey(month) === monthKey(now)
+    const lagging = isCurrent ? laggingSince(lastAt, now) : null
+    return {
+      staleSince: lagging ? lagging.toISOString() : null,
+      firstMonth: firstAt ? monthKey(firstAt) : null,
+    }
   }
 
   private async invoiceForAccount(
@@ -185,7 +228,21 @@ export class InvoiceService {
       }
     }
 
-    if (account.source !== 'PLUGGY') {
+    if (this.isClosedCycleFor(account, month)) {
+      const rows = await this.repo.findClosedCycleRows(
+        account.userId,
+        account.id,
+        closedCycleRange(account.closingDay as number, month as string, closingBeforeDue(account)),
+      )
+      return {
+        ...computeInvoice(rows, selfPersonId),
+        estimatedCents: 0,
+        advancePaidCents: 0,
+        previousBillRemainingCents: 0,
+      }
+    }
+
+    if (account.source !== 'PLUGGY' || (month && resolveMonthKey(month) < monthKey(new Date()))) {
       const rows = await this.repo.findRows(account.userId, resolveMonthRange(month), account.id)
       return {
         ...computeInvoice(rows, selfPersonId),

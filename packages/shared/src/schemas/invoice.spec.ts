@@ -26,8 +26,18 @@ describe('accountInvoiceSchema', () => {
     advancePaidCents: 0,
     previousBillRemainingCents: 1188,
     payableCents: 100,
+    staleSince: null,
+    firstMonth: null,
     isForecast: true,
   }
+
+  it('aceita staleSince em ISO ou null e firstMonth AAAA-MM ou null', () => {
+    const forecast = { ...base, lastForecastMonth: null }
+    expect(accountInvoiceSchema.safeParse({ ...forecast, staleSince: '2026-10-25T20:25:28.001Z' }).success).toBe(true)
+    expect(accountInvoiceSchema.safeParse({ ...forecast, staleSince: '25/10' }).success).toBe(false)
+    expect(accountInvoiceSchema.safeParse({ ...forecast, firstMonth: '2026-06' }).success).toBe(true)
+    expect(accountInvoiceSchema.safeParse({ ...forecast, firstMonth: '2026-6' }).success).toBe(false)
+  })
 
   it('aceita mês AAAA-MM ou null em lastForecastMonth', () => {
     expect(accountInvoiceSchema.safeParse({ ...base, lastForecastMonth: '2027-05' }).success).toBe(true)

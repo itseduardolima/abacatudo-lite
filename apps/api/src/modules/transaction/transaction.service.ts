@@ -105,8 +105,14 @@ export class TransactionService {
 
   async listByMonth(userId: string, month?: string): Promise<Transaction[]> {
     const range = resolveMonthRange(month)
-    const isFutureMonth = month !== undefined && month > monthKey(new Date())
-    const rows = isFutureMonth ? await this.repo.findForecast(userId, range) : await this.repo.findMany(userId, range)
+    const currentMonth = monthKey(new Date())
+    const isFutureMonth = month !== undefined && month > currentMonth
+    const isPastMonth = month !== undefined && month < currentMonth
+    const rows = isFutureMonth
+      ? await this.repo.findForecast(userId, range)
+      : isPastMonth
+        ? await this.repo.findClosedCycle(userId, month)
+        : await this.repo.findMany(userId, range)
     return rows.map((row) => toTransactionDto(row, row.splits))
   }
 

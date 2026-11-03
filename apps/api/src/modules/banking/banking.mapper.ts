@@ -47,13 +47,18 @@ export function resolveKind(tx: PluggyTransaction, isCreditCard: boolean): Trans
   return isCreditCard ? 'REFUND' : 'INCOME'
 }
 
+function amountInAccountCurrency(tx: PluggyTransaction): number {
+  const foreign = tx.currencyCode != null && tx.currencyCode !== 'BRL'
+  return foreign && tx.amountInAccountCurrency != null ? tx.amountInAccountCurrency : tx.amount
+}
+
 export function mapTransaction(tx: PluggyTransaction, isCreditCard: boolean): MappedTransaction {
   const card = tx.creditCardMetadata
   return {
     externalId: tx.id,
     kind: resolveKind(tx, isCreditCard),
     status: tx.status,
-    amountCents: Math.round(Math.abs(tx.amount) * 100),
+    amountCents: Math.round(Math.abs(amountInAccountCurrency(tx)) * 100),
     // Em parcelada, `date` é quando a parcela cai na fatura (pode ser meses à frente); purchaseDate é
     // quando a compra de fato aconteceu — é isso que conta pra "gasto do mês" (03-regras-negocio).
     occurredAt: dayFromDateString(card?.purchaseDate ?? tx.date),
@@ -92,10 +97,47 @@ export function findSettledPendingTwins(txs: MappedTransaction[]): SettledPendin
   return twins
 }
 
+const INSTALLMENT_SUFFIX = /\s*\d+\/\d+$/
+const REFUND_DESCRIPTION = /estorno/i
+
+export function findRefundedInstallments(txs: MappedTransaction[]): string[] {
+  const groups = new Map<string, MappedTransaction[]>()
+  for (const tx of txs) {
+    if (tx.kind !== 'EXPENSE' || tx.installmentNumber == null || tx.installmentTotal == null) continue
+    const day = brasiliaDayStart(new Date(tx.occurredAt as Date | string)).getTime()
+    const key = `${tx.description.replace(INSTALLMENT_SUFFIX, '')}|${tx.installmentTotal}|${day}`
+    groups.set(key, [...(groups.get(key) ?? []), tx])
+  }
+  const takenKeys = new Set<string>()
+  const cancelled: string[] = []
+  const refunds = txs.filter(
+    (tx) => tx.kind === 'REFUND' && tx.status === 'POSTED' && REFUND_DESCRIPTION.test(tx.description),
+  )
+  for (const refund of refunds) {
+    const refundedAt = new Date(refund.occurredAt as Date | string).getTime()
+    for (const [key, group] of groups) {
+      if (takenKeys.has(key)) continue
+      const settled = group.some(
+        (tx) =>
+          tx.status === 'POSTED' &&
+          tx.billId != null &&
+          tx.amountCents === refund.amountCents &&
+          new Date(tx.occurredAt as Date | string).getTime() <= refundedAt,
+      )
+      if (!settled) continue
+      takenKeys.add(key)
+      for (const tx of group) if (tx.status === 'PENDING' && tx.billId == null) cancelled.push(tx.externalId)
+      break
+    }
+  }
+  return cancelled
+}
+
 export function mapAccountFields(pluggyAccount: PluggyAccount): {
   type: AccountType
   closingDay: number | null
   dueDay: number | null
+  closingOffsetDays: number | null
   creditLimitCents: number | null
 } {
   const credit = pluggyAccount.creditData
@@ -103,8 +145,20 @@ export function mapAccountFields(pluggyAccount: PluggyAccount): {
     type: 'CREDIT_CARD',
     closingDay: dayOfMonth(credit?.balanceCloseDate),
     dueDay: dayOfMonth(credit?.balanceDueDate),
+    closingOffsetDays: closingOffsetDays(pluggyAccount),
     creditLimitCents: credit?.creditLimit != null ? Math.round(credit.creditLimit * 100) : null,
   }
+}
+
+const NUBANK_NAME = /nubank/i
+
+function closingOffsetDays(pluggyAccount: PluggyAccount): number | null {
+  if (!NUBANK_NAME.test(pluggyAccount.name)) return null
+  const close = pluggyAccount.creditData?.balanceCloseDate
+  const due = pluggyAccount.creditData?.balanceDueDate
+  if (!close || !due) return null
+  const days = Math.round((Date.parse(due.slice(0, 10)) - Date.parse(close.slice(0, 10))) / 86_400_000)
+  return days > 0 && dayOfMonth(due)! < dayOfMonth(close)! ? days : null
 }
 
 function dayOfMonth(dateStr: string | null | undefined): number | null {

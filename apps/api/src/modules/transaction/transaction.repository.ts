@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common'
 import type { Prisma, Transaction } from '@prisma/client'
 import {
+  closedCycleRange,
+  closingBeforeDue,
   monthKey,
   monthRange,
   nextClosingCutoff,
@@ -80,6 +82,43 @@ export class TransactionRepository {
     const latestBilled = await this.latestBilledPurchaseByAccount(userId)
     const open = rows.filter((row) => isInOpenCycle(row, range, new Date(), latestBilled.get(row.accountId) ?? null))
     return keepCurrentInstallmentsOnly(open.map(({ account: _account, ...row }) => row))
+  }
+
+  async findClosedCycle(userId: string, month: string): Promise<TransactionWithSplits[]> {
+    const calendar = monthRange(month)
+    const accounts = await this.prisma.account.findMany({
+      where: { userId, type: 'CREDIT_CARD' },
+      select: { id: true, source: true, closingDay: true, dueDay: true, closingOffsetDays: true },
+    })
+    const cycleOf = (account: {
+      source: string
+      closingDay: number | null
+      dueDay: number | null
+      closingOffsetDays: number | null
+    }) =>
+      account.source === 'PLUGGY' && account.closingDay
+        ? closedCycleRange(account.closingDay, month, closingBeforeDue(account))
+        : calendar
+    const inRange = (range: { start: Date; end: Date }) => [
+      { installmentDueAt: { gte: range.start, lt: range.end } },
+      { installmentDueAt: null, occurredAt: { gte: range.start, lt: range.end } },
+    ]
+    if (accounts.length === 0) return []
+    return this.prisma.transaction.findMany({
+      where: {
+        userId,
+        kind: { in: ['EXPENSE', 'REFUND'] },
+        OR: accounts.map((account) => ({
+          accountId: account.id,
+          OR:
+            account.source === 'PLUGGY'
+              ? inRange(cycleOf(account))
+              : [{ occurredAt: { gte: calendar.start, lt: calendar.end } }],
+        })),
+      },
+      orderBy: { occurredAt: 'desc' },
+      include: SPLITS_SELECT,
+    })
   }
 
   private async latestBilledPurchaseByAccount(userId: string): Promise<Map<string, Date>> {

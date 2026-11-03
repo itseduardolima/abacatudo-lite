@@ -55,6 +55,7 @@ function syncMock() {
     mergeOrphanPending: jest.fn(),
     findInstallmentRows: jest.fn().mockResolvedValue({ rows: [], createdIds: new Set() }),
     applyInstallmentInheritance: jest.fn(),
+    cancelPendingInstallments: jest.fn(),
   } as unknown as jest.Mocked<BankingSyncRepository>
 }
 
@@ -129,6 +130,7 @@ function accountRow(overrides: Partial<AccountRow> = {}): AccountRow {
     type: 'CREDIT_CARD',
     source: 'PLUGGY',
     closingDay: 20,
+    closingOffsetDays: null,
     dueDay: 27,
     creditLimitCents: 500000,
     bankLogo: null,
@@ -664,6 +666,68 @@ describe('BankingService', () => {
 
     expect(sync.mergeOrphanPending).toHaveBeenCalledWith('user-1', 'acc-1', ['tx-1'])
     expect(result).toMatchObject({ accountsSynced: 1, transactionsSynced: 1 })
+  })
+
+  it('manualSync: parcelas pendentes de compra estornada são canceladas; falha ao cancelar não derruba o sync', async () => {
+    const items = itemsMock()
+    items.findById.mockResolvedValue(itemRow())
+    const accounts = accountsMock()
+    accounts.upsertFromSync.mockResolvedValue(accountRow())
+    const pluggy = pluggyMock()
+    pluggy.listAccounts.mockResolvedValue([{ id: 'ext-acc-1', type: 'CREDIT', name: 'Nubank', creditData: null }])
+    const base = {
+      operationType: null,
+      category: null,
+      categoryId: null,
+      merchant: null,
+    }
+    pluggy.listTransactions.mockResolvedValue({
+      results: [
+        {
+          ...base,
+          id: 'i1',
+          amount: 182.41,
+          type: 'DEBIT',
+          status: 'POSTED',
+          date: '2026-10-06T15:26:28.001Z',
+          description: 'Loja X 1/4',
+          creditCardMetadata: {
+            installmentNumber: 1,
+            totalInstallments: 4,
+            billId: 'b1',
+            purchaseDate: '2026-10-06T15:26:28.001Z',
+          },
+        },
+        {
+          ...base,
+          id: 'i2',
+          amount: 182.4,
+          type: 'DEBIT',
+          status: 'PENDING',
+          date: '2026-11-06T03:00:00.000Z',
+          description: 'Loja X 2/4',
+          creditCardMetadata: { installmentNumber: 2, totalInstallments: 4, purchaseDate: '2026-10-06T15:26:28.001Z' },
+        },
+        {
+          ...base,
+          id: 'r1',
+          amount: -182.41,
+          type: 'CREDIT',
+          status: 'POSTED',
+          date: '2026-10-26T12:00:00.000Z',
+          description: 'Estorno de compra',
+          creditCardMetadata: null,
+        },
+      ],
+      next: null,
+    })
+    const sync = syncMock()
+    sync.cancelPendingInstallments.mockRejectedValueOnce(new Error('boom'))
+
+    const result = await newService({ pluggy, items, accounts, sync }).manualSync('user-1', 'item-1')
+
+    expect(sync.cancelPendingInstallments).toHaveBeenCalledWith('user-1', 'acc-1', ['i2'])
+    expect(result).toMatchObject({ accountsSynced: 1, transactionsSynced: 3 })
   })
 
   it('manualSync: sincroniza conta e transações por upsert atômico, sem duplicar', async () => {

@@ -1,5 +1,6 @@
 import type { PluggyAccount, PluggyTransaction } from './pluggy/pluggy.schemas'
 import {
+  findRefundedInstallments,
   findSettledPendingTwins,
   mapAccountFields,
   mapTransaction,
@@ -102,6 +103,20 @@ describe('resolveKind', () => {
 })
 
 describe('mapTransaction', () => {
+  it('usa o valor em reais quando a compra é em moeda estrangeira', () => {
+    const result = mapTransaction(tx({ amount: 20.75, currencyCode: 'USD', amountInAccountCurrency: 108.88 }), true)
+    expect(result.amountCents).toBe(10888)
+  })
+
+  it('mantém amount quando a moeda é BRL ou não há valor convertido', () => {
+    expect(
+      mapTransaction(tx({ amount: 20.75, currencyCode: 'BRL', amountInAccountCurrency: 99 }), true).amountCents,
+    ).toBe(2075)
+    expect(
+      mapTransaction(tx({ amount: 20.75, currencyCode: 'USD', amountInAccountCurrency: null }), true).amountCents,
+    ).toBe(2075)
+  })
+
   it('converte valor para centavos absolutos e mapeia metadados de parcela', () => {
     const result = mapTransaction(
       tx({
@@ -165,8 +180,23 @@ describe('mapAccountFields', () => {
       type: 'CREDIT_CARD',
       closingDay: 20,
       dueDay: 27,
+      closingOffsetDays: null,
       creditLimitCents: 500000,
     })
+  })
+
+  it('Nubank que fecha num mês e vence no seguinte guarda os dias entre o fechamento e o vencimento', () => {
+    const result = mapAccountFields(
+      account({ creditData: { creditLimit: 5000, balanceCloseDate: '2026-10-27', balanceDueDate: '2026-11-03' } }),
+    )
+    expect(result.closingOffsetDays).toBe(7)
+  })
+
+  it('outro banco, ou Nubank com fechamento e vencimento no mesmo mês, não guarda distância', () => {
+    const cross = { creditLimit: 5000, balanceCloseDate: '2026-10-29', balanceDueDate: '2026-11-10' }
+    expect(mapAccountFields(account({ name: 'BB', creditData: cross })).closingOffsetDays).toBeNull()
+    const same = { creditLimit: 5000, balanceCloseDate: '2026-09-20', balanceDueDate: '2026-09-27' }
+    expect(mapAccountFields(account({ creditData: same })).closingOffsetDays).toBeNull()
   })
 })
 
@@ -297,5 +327,68 @@ describe('needsReconnect', () => {
 
   it('banco desconectado de propósito nunca pede', () => {
     expect(needsReconnect('DISCONNECTED', past, now)).toBe(false)
+  })
+})
+
+describe('findRefundedInstallments', () => {
+  const purchase = new Date('2026-10-06T15:26:28.001Z')
+  function installment(n: number, overrides: Partial<MappedTransaction> = {}): MappedTransaction {
+    return {
+      externalId: `inst-${n}`,
+      kind: 'EXPENSE',
+      status: n === 1 ? 'POSTED' : 'PENDING',
+      amountCents: n === 1 ? 18241 : 18240,
+      occurredAt: purchase,
+      description: `Loja X ${n}/4`,
+      installmentNumber: n,
+      installmentTotal: 4,
+      billId: n === 1 ? 'bill-1' : null,
+      ...overrides,
+    } as MappedTransaction
+  }
+  function refund(overrides: Partial<MappedTransaction> = {}): MappedTransaction {
+    return {
+      externalId: 'refund',
+      kind: 'REFUND',
+      status: 'POSTED',
+      amountCents: 18241,
+      occurredAt: new Date('2026-10-26T12:00:00.000Z'),
+      description: 'Estorno de compra',
+      installmentNumber: null,
+      installmentTotal: null,
+      billId: 'bill-1',
+      ...overrides,
+    } as MappedTransaction
+  }
+  const plan = [installment(1), installment(2), installment(3), installment(4)]
+
+  it('estorno do valor da parcela faturada cancela as parcelas pendentes sem fatura', () => {
+    expect(findRefundedInstallments([...plan, refund()])).toEqual(['inst-2', 'inst-3', 'inst-4'])
+  })
+
+  it('sem estorno, nada é cancelado', () => {
+    expect(findRefundedInstallments(plan)).toEqual([])
+  })
+
+  it('estorno de outro valor não cancela', () => {
+    expect(findRefundedInstallments([...plan, refund({ amountCents: 5000 })])).toEqual([])
+  })
+
+  it('estorno anterior à compra não cancela', () => {
+    expect(findRefundedInstallments([...plan, refund({ occurredAt: new Date('2026-10-01T12:00:00.000Z') })])).toEqual(
+      [],
+    )
+  })
+
+  it('um estorno cancela só uma compra, mesmo com duas de mesmo valor', () => {
+    const other = [1, 2, 3, 4].map((n) =>
+      installment(n, { externalId: `other-${n}`, description: `Loja Y ${n}/4`, occurredAt: purchase }),
+    )
+    expect(findRefundedInstallments([...plan, ...other, refund()])).toEqual(['inst-2', 'inst-3', 'inst-4'])
+  })
+
+  it('parcela já faturada nunca é cancelada', () => {
+    const billed = installment(2, { status: 'POSTED', billId: 'bill-2' })
+    expect(findRefundedInstallments([installment(1), billed, installment(3), refund()])).toEqual(['inst-3'])
   })
 })

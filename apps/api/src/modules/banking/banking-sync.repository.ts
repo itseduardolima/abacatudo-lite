@@ -103,6 +103,21 @@ export class BankingSyncRepository {
     }
   }
 
+  async cancelPendingInstallments(userId: string, accountId: string, externalIds: string[]): Promise<void> {
+    if (externalIds.length === 0) return
+    await this.prisma.transaction.updateMany({
+      where: {
+        userId,
+        accountId,
+        externalId: { in: externalIds },
+        status: 'PENDING',
+        billId: null,
+        cancelledAt: null,
+      },
+      data: { cancelledAt: new Date() },
+    })
+  }
+
   async mergeOrphanPending(userId: string, accountId: string, seenExternalIds: string[]): Promise<void> {
     const orphans = await this.prisma.transaction.findMany({
       where: {

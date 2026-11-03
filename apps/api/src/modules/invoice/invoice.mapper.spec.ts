@@ -4,6 +4,7 @@ import {
   applyAdvancePayment,
   computeInvoice,
   keepNextDueInstallmentOnly,
+  laggingSince,
   mergeInvoices,
   type InvoiceRow,
 } from './invoice.mapper'
@@ -182,5 +183,27 @@ describe('applyAdvancePayment', () => {
     const result = applyAdvancePayment({ totalCents: 155504, mineCents: 100000, notMineCents: 55504 }, 10312)
     expect(result).toEqual({ totalCents: 145192, mineCents: 89688, notMineCents: 55504 })
     expect(result.mineCents + result.notMineCents).toBe(result.totalCents)
+  })
+})
+
+describe('laggingSince', () => {
+  const now = new Date('2026-11-02T14:00:00.000Z')
+
+  it('devolve a data da última transação quando passou de 3 dias sem nada novo', () => {
+    const last = new Date('2026-10-25T20:25:28.001Z')
+    expect(laggingSince(last, now)).toBe(last)
+  })
+
+  it('exatamente 3 dias já conta como defasado', () => {
+    const last = new Date('2026-10-30T14:00:00.000Z')
+    expect(laggingSince(last, now)).toBe(last)
+  })
+
+  it('menos de 3 dias não avisa', () => {
+    expect(laggingSince(new Date('2026-11-01T10:00:00.000Z'), now)).toBeNull()
+  })
+
+  it('sem nenhuma transação não avisa (cartão recém-conectado)', () => {
+    expect(laggingSince(null, now)).toBeNull()
   })
 })
