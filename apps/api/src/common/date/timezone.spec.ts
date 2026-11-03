@@ -1,4 +1,6 @@
 import {
+  closedCycleRange,
+  closingBeforeDue,
   lastClosingCutoff,
   resolveLastClosingCutoff,
   dateKey,
@@ -147,5 +149,29 @@ describe('resolveLastClosingCutoff', () => {
   it('mais de 3 dias antes do dia nominal é atraso do Pluggy, não antecipação', () => {
     const lastBilled = new Date('2026-09-22T15:00:00.000Z')
     expect(resolveLastClosingCutoff(27, lastBilled, NOW).toISOString()).toBe('2026-09-27T03:00:00.000Z')
+  })
+})
+
+describe('closedCycleRange com fechamento dias antes do vencimento', () => {
+  const beforeDue = { dueDay: 3, offsetDays: 7 }
+  const cutoffs = (month: string) => {
+    const { start, end } = closedCycleRange(27, month, beforeDue)
+    return [start.toISOString(), end.toISOString()]
+  }
+
+  it('o fechamento acompanha o tamanho do mês: 26/09, 27/10, 27/08', () => {
+    expect(cutoffs('2026-10')).toEqual(['2026-09-26T03:00:00.000Z', '2026-10-27T03:00:00.000Z'])
+    expect(cutoffs('2026-09')).toEqual(['2026-08-27T03:00:00.000Z', '2026-09-26T03:00:00.000Z'])
+  })
+
+  it('sem a distância, usa o dia fixo', () => {
+    const { start, end } = closedCycleRange(27, '2026-10')
+    expect([start.toISOString(), end.toISOString()]).toEqual(['2026-09-27T03:00:00.000Z', '2026-10-27T03:00:00.000Z'])
+  })
+
+  it('closingBeforeDue só vale com vencimento e distância', () => {
+    expect(closingBeforeDue({ dueDay: 3, closingOffsetDays: 7 })).toEqual(beforeDue)
+    expect(closingBeforeDue({ dueDay: null, closingOffsetDays: 7 })).toBeUndefined()
+    expect(closingBeforeDue({ dueDay: 3, closingOffsetDays: null })).toBeUndefined()
   })
 })

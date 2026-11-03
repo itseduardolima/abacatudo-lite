@@ -101,3 +101,10 @@ export function applyAdvancePayment(invoice: Invoice, advancePaid: number): Invo
     notMineCents: invoice.notMineCents,
   }
 }
+
+const LAGGING_AFTER_MS = 3 * 86_400_000
+
+export function laggingSince(lastTransactionAt: Date | null, now: Date): Date | null {
+  if (!lastTransactionAt) return null
+  return now.getTime() - lastTransactionAt.getTime() >= LAGGING_AFTER_MS ? lastTransactionAt : null
+}

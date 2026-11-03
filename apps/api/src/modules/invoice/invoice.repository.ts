@@ -69,6 +69,40 @@ export class InvoiceRepository {
     return rows.map((row, index) => toInvoiceRow(row, installments[index]!))
   }
 
+  async findClosedCycleRows(
+    userId: string,
+    accountId: string,
+    range: { start: Date; end: Date },
+  ): Promise<InvoiceRow[]> {
+    const rows = await this.prisma.transaction.findMany({
+      where: {
+        userId,
+        cancelledAt: null,
+        kind: { in: ['EXPENSE', 'REFUND'] },
+        account: { id: accountId, type: 'CREDIT_CARD', source: 'PLUGGY' },
+        OR: [
+          { installmentDueAt: { gte: range.start, lt: range.end } },
+          { installmentDueAt: null, occurredAt: { gte: range.start, lt: range.end } },
+        ],
+      },
+      include: { splits: { select: { personId: true, amountCents: true } } },
+    })
+    return rows.map((row) => toInvoiceRow(row, null))
+  }
+
+  async findActivityBounds(
+    userId: string,
+    accountId: string,
+    now: Date,
+  ): Promise<{ firstAt: Date | null; lastAt: Date | null }> {
+    const where = { userId, accountId, cancelledAt: null }
+    const [first, last] = await Promise.all([
+      this.prisma.transaction.aggregate({ where, _min: { occurredAt: true } }),
+      this.prisma.transaction.aggregate({ where: { ...where, occurredAt: { lte: now } }, _max: { occurredAt: true } }),
+    ])
+    return { firstAt: first._min.occurredAt, lastAt: last._max.occurredAt }
+  }
+
   async findLatestBilledPurchaseAt(userId: string, accountId: string): Promise<Date | null> {
     const result = await this.prisma.transaction.aggregate({
       where: {
@@ -130,6 +164,23 @@ export class InvoiceRepository {
       ...openSince(window),
       kind: { in: ['EXPENSE', 'REFUND'] },
       account: { id: accountId, type: 'CREDIT_CARD', source: 'PLUGGY' },
+    })
+  }
+
+  findStatementClosedCycleRows(
+    userId: string,
+    accountId: string,
+    range: { start: Date; end: Date },
+  ): Promise<StatementRow[]> {
+    return this.statementRows({
+      userId,
+      cancelledAt: null,
+      kind: { in: ['EXPENSE', 'REFUND'] },
+      account: { id: accountId, type: 'CREDIT_CARD', source: 'PLUGGY' },
+      OR: [
+        { installmentDueAt: { gte: range.start, lt: range.end } },
+        { installmentDueAt: null, occurredAt: { gte: range.start, lt: range.end } },
+      ],
     })
   }
 
