@@ -89,7 +89,7 @@ function TransactionsContent() {
   } = useTransactionsPage()
 
   const selectedAccount = cardAccounts.find((account) => account.id === selectedAccountId)
-  const statementsSheet = useStatementsSheet(forecast.isForecast ? forecast.month : undefined)
+  const statementsSheet = useStatementsSheet(forecast.isCurrent ? undefined : forecast.month)
 
   return (
     <main className="mx-auto flex min-h-screen max-w-[420px] flex-col gap-4 px-4 pb-28 md:pb-10 pt-8">
@@ -155,11 +155,18 @@ function TransactionsContent() {
         <p className="text-xs text-muted">Previsão: parcelas lançadas pelo banco e estimadas para este mês.</p>
       )}
 
+      {selectedAccount && forecast.isPast && (
+        <p className="text-xs text-muted">
+          Fatura que fechou neste mês, somada pelas datas das compras e pelo dia de fechamento do cartão.
+        </p>
+      )}
+
       {selectedAccount && invoice && (
         <>
           <div className="flex items-center justify-between gap-2">
             <span className="rounded-pill bg-tint px-3 py-1 text-xs font-medium text-primary-ink">
-              {forecast.isForecast ? 'Fatura prevista' : 'Fatura aberta'} de {formatMonthName(forecast.month)}
+              {forecast.isForecast ? 'Fatura prevista' : forecast.isPast ? 'Fatura fechada' : 'Fatura aberta'} de{' '}
+              {formatMonthName(forecast.month)}
             </span>
             {(selectedAccount.closingDay || selectedAccount.dueDay) && (
               <span className="text-xs text-muted">

@@ -10,7 +10,8 @@ import { useInvoices } from '@/hooks/queries/use-invoice'
 import { useMe } from '@/hooks/queries/use-me'
 import { ApiClientError } from '@/lib/api-client'
 import { PluggyConnectError } from '@/lib/pluggy-connect'
-import { latestForecastMonth } from '@/lib/utils/latest-forecast-month'
+import { currentMonthKey } from '@/lib/utils/format-month'
+import { earliestHistoryMonth, latestForecastMonth } from '@/lib/utils/latest-forecast-month'
 
 export function useHomePage() {
   const router = useRouter()
@@ -29,8 +30,12 @@ export function useHomePage() {
   const cardAccounts = (accounts.data ?? []).filter((account) => account.type === 'CREDIT_CARD' && !account.archivedAt)
 
   const currentInvoices = useInvoices(cardAccounts.map((account) => account.id))
-  const forecast = useForecastMonth(latestForecastMonth(currentInvoices.map((query) => query.data?.lastForecastMonth)))
-  const invoiceMonth = forecast.isForecast ? forecast.month : undefined
+  const forecast = useForecastMonth(
+    latestForecastMonth(currentInvoices.map((query) => query.data?.lastForecastMonth)),
+    null,
+    earliestHistoryMonth(currentInvoices.map((query) => query.data?.firstMonth)),
+  )
+  const invoiceMonth = forecast.month === currentMonthKey() ? undefined : forecast.month
   const pace = useBudgetPace(invoiceMonth)
   const monthInvoices = useInvoices(
     cardAccounts.map((account) => account.id),

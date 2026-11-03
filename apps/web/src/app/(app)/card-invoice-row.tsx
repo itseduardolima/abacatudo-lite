@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { BankAvatar } from '@/components/finance/BankAvatar'
 import { InvoiceRowSkeleton } from './home-skeleton'
 import { MoneyText } from '@/components/finance/MoneyText'
+import { formatShortDate } from '@/lib/utils/format-date'
 
 // Linha de "Faturas de [mês]" na Home (protótipo 07-inicio): um card por conta de cartão, com barra de
 // progresso mine/total e "Meu R$X de R$Y". A fatura vem pronta da page (useInvoices, um hook só pra todos
@@ -24,11 +25,8 @@ export function CardInvoiceRow({
   const { mineCents, totalCents } = invoice
   const percent = totalCents > 0 ? Math.min((mineCents / totalCents) * 100, 100) : 0
 
-  return (
-    <Link
-      href={month ? `/transactions?month=${month}` : '/transactions'}
-      className="block border-b border-surface py-3.5 last:border-0"
-    >
+  const content = (
+    <>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <BankAvatar bankLogo={account.bankLogo} fallbackInitial={account.name.charAt(0).toUpperCase()} size={28} />
@@ -49,6 +47,19 @@ export function CardInvoiceRow({
           de <MoneyText cents={totalCents} />
         </span>
       </div>
+      {invoice.staleSince && (
+        <p className="mt-1.5 text-xs text-muted">
+          Últimas compras recebidas do banco: {formatShortDate(invoice.staleSince)}. Pode haver lançamentos que ainda
+          não chegaram.
+        </p>
+      )}
+    </>
+  )
+  const className = 'block border-b border-surface py-3.5 last:border-0'
+
+  return (
+    <Link href={month ? `/transactions?month=${month}` : '/transactions'} className={className}>
+      {content}
     </Link>
   )
 }

@@ -59,13 +59,19 @@ export default function HomePage() {
             />
           </div>
           {forecast.isForecast && <p className="mt-2 text-xs text-muted">Parcelas lançadas pelo banco e estimadas.</p>}
+          {forecast.isPast && (
+            <p className="mt-2 text-xs text-muted">
+              Fatura que fechou em {formatMonthName(forecast.month)}, somada pelas datas das compras e pelo dia de
+              fechamento do cartão.
+            </p>
+          )}
           <div className="mt-1">
             {cardAccounts.map((account) => (
               <CardInvoiceRow
                 key={account.id}
                 account={account}
                 invoice={invoiceByAccountId.get(account.id)}
-                month={forecast.isForecast ? forecast.month : undefined}
+                month={forecast.isCurrent ? undefined : forecast.month}
                 isLoading={isLoadingInvoices}
               />
             ))}
