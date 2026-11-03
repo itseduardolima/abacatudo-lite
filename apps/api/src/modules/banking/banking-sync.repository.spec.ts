@@ -21,7 +21,7 @@ function fakePrisma() {
     split: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
     transaction: { update: jest.fn().mockResolvedValue({}), delete: jest.fn().mockResolvedValue({}) },
   }
-  const transaction = { findUnique: jest.fn(), findMany: jest.fn(), findFirst: jest.fn() }
+  const transaction = { findUnique: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), updateMany: jest.fn() }
   const prisma = {
     transaction,
     $transaction: jest.fn(async (callback: (client: typeof tx) => Promise<void>) => callback(tx)),
@@ -123,5 +123,31 @@ describe('BankingSyncRepository.mergeOrphanPending', () => {
     await new BankingSyncRepository(prisma).mergeOrphanPending('user-1', 'acc-1', ['posted-1'])
 
     expect(tx.transaction.delete).not.toHaveBeenCalled()
+  })
+})
+
+describe('BankingSyncRepository.cancelPendingInstallments', () => {
+  it('cancela só parcelas pendentes, sem fatura e ainda não canceladas, do usuário e da conta', async () => {
+    const { prisma, transaction } = fakePrisma()
+
+    await new BankingSyncRepository(prisma).cancelPendingInstallments('user-1', 'acc-1', ['i2', 'i3'])
+
+    expect(transaction.updateMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-1',
+        accountId: 'acc-1',
+        externalId: { in: ['i2', 'i3'] },
+        status: 'PENDING',
+        billId: null,
+        cancelledAt: null,
+      },
+      data: { cancelledAt: expect.any(Date) },
+    })
+  })
+
+  it('sem ids, não consulta o banco', async () => {
+    const { prisma, transaction } = fakePrisma()
+    await new BankingSyncRepository(prisma).cancelPendingInstallments('user-1', 'acc-1', [])
+    expect(transaction.updateMany).not.toHaveBeenCalled()
   })
 })

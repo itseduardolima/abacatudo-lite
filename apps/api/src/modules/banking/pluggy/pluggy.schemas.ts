@@ -54,6 +54,8 @@ export const pluggyAccountsPageSchema = z.object({
 export const pluggyTransactionSchema = z.object({
   id: z.string(),
   amount: z.number(),
+  currencyCode: z.string().nullable().optional(),
+  amountInAccountCurrency: z.number().nullable().optional(),
   type: z.enum(['DEBIT', 'CREDIT']),
   operationType: z.string().nullable().optional(),
   // category/categoryId: o único jeito confiável de saber se é pagamento de fatura (visto na prática —

@@ -15,6 +15,7 @@ import { normalizeMerchant } from '../rule/normalize-merchant'
 import { RuleRepository } from '../rule/rule.repository'
 import { BankingSyncRepository } from './banking-sync.repository'
 import {
+  findRefundedInstallments,
   findSettledPendingTwins,
   mapAccountFields,
   mapTransaction,
@@ -190,6 +191,18 @@ export class BankingService {
     }
   }
 
+  private async cancelRefundedInstallments(
+    userId: string,
+    accountId: string,
+    seen: MappedTransaction[],
+  ): Promise<void> {
+    try {
+      await this.sync.cancelPendingInstallments(userId, accountId, findRefundedInstallments(seen))
+    } catch (error) {
+      this.logger.warn(`Não foi possível cancelar parcelas estornadas da conta ${accountId}: ${describeError(error)}`)
+    }
+  }
+
   private async mergePendingDuplicates(
     userId: string,
     accountId: string,
@@ -258,11 +271,12 @@ export class BankingService {
 
     for (const pluggyAccount of pluggyAccounts.filter((candidate) => candidate.type === 'CREDIT')) {
       const fields = mapAccountFields(pluggyAccount)
-      const { closingDay, dueDay, creditLimitCents, ...updateBase } = fields
+      const { closingDay, dueDay, closingOffsetDays, creditLimitCents, ...updateBase } = fields
       const updateFields = {
         ...updateBase,
         ...(closingDay != null ? { closingDay } : {}),
         ...(dueDay != null ? { dueDay } : {}),
+        ...(closingOffsetDays != null ? { closingOffsetDays } : {}),
         ...(creditLimitCents != null ? { creditLimitCents } : {}),
       }
       // pluggyItemId também no update: sem isso, uma conta que já existia (upsert bate no update, não no
@@ -304,6 +318,7 @@ export class BankingService {
         transactionsSynced++
       }
       await this.mergePendingDuplicates(userId, account.id, twins, mappedAll)
+      await this.cancelRefundedInstallments(userId, account.id, mappedAll)
       await this.inheritInstallmentPeople(userId, account.id, syncStartedAt)
     }
 
