@@ -14,7 +14,14 @@ allowBuilds:
 # Correções de segurança de dependências transitivas (pnpm audit --audit-level=high, 08-seguranca § 11).
 # Remover cada linha quando a dependência direta passar a trazer a versão corrigida.
 overrides:
-  multer: '>=2.3.0'
+  multer: '>=2.5.0'
+  body-parser: '>=2.4.0'
+  systeminformation: '>=5.33.16'
+  fast-uri: '>=3.1.9'
+  qs: '>=6.16.1'
+  postcss-selector-parser: '>=6.1.5'
+  js-yaml: '>=5.4.1'
+  glob: '>=14.0.2'
   postcss: '>=8.5.23'
   deepmerge-ts: '>=8.0.0'
   sharp: '>=0.35.5'
@@ -23,6 +30,9 @@ overrides:
 # Sem versão corrigida publicada no npm (braces 3.0.3 é a última; o aviso pede >=3.0.4). Só entra por ferramenta
 # de desenvolvimento do apps/web (tailwindcss, eslint-config-next), nunca roda em produção. Remover quando sair
 # uma versão corrigida (08-seguranca § 11).
+# GHSA-mrhx-c7xc-m3w5 (zod <4.6.6, memória ao validar coleção enorme): só corrige no zod 4, que pede migrar api, web e
+# shared e o nestjs-zod 5. Mitigado porque o corpo JSON da API é limitado a 1 MB (main.ts). Remover ao migrar para zod 4.
 auditConfig:
   ignoreGhsas:
     - GHSA-vfj7-8cjw-p6xm
+    - GHSA-mrhx-c7xc-m3w5
