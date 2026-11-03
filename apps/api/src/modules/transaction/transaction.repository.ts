@@ -21,7 +21,7 @@ export function isInOpenCycle(
     occurredAt: Date
     installmentNumber: number | null
     installmentDueAt: Date | null
-    account: { closingDay: number | null }
+    account: { closingDay: number | null; dueDay?: number | null; closingOffsetDays?: number | null }
   },
   range: { start: Date; end: Date },
   now: Date = new Date(),
@@ -32,7 +32,7 @@ export function isInOpenCycle(
     row.installmentNumber !== null &&
     row.installmentDueAt &&
     row.account.closingDay &&
-    row.installmentDueAt >= nextClosingCutoff(row.account.closingDay, now)
+    row.installmentDueAt >= nextClosingCutoff(row.account.closingDay, now, closingBeforeDue(row.account))
   )
     return false
   if (row.billId !== null || !row.account.closingDay) return true
@@ -45,7 +45,7 @@ export function isInOpenCycle(
   if (row.occurredAt >= range.start && row.occurredAt < range.end) return true
   return (
     (row.installmentDueAt ?? row.occurredAt) >=
-    resolveLastClosingCutoff(row.account.closingDay, latestBilledPurchaseAt, now)
+    resolveLastClosingCutoff(row.account.closingDay, latestBilledPurchaseAt, now, closingBeforeDue(row.account))
   )
 }
 
@@ -77,7 +77,7 @@ export class TransactionRepository {
         ],
       },
       orderBy: { occurredAt: 'desc' },
-      include: { ...SPLITS_SELECT, account: { select: { closingDay: true } } },
+      include: { ...SPLITS_SELECT, account: { select: { closingDay: true, dueDay: true, closingOffsetDays: true } } },
     })
     const latestBilled = await this.latestBilledPurchaseByAccount(userId)
     const open = rows.filter((row) => isInOpenCycle(row, range, new Date(), latestBilled.get(row.accountId) ?? null))
